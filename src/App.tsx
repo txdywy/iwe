@@ -100,13 +100,15 @@ function App() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="flex flex-col items-center text-center lg:items-start lg:text-left shrink-0 md:pt-4 w-full"
+              className="relative flex flex-col items-center text-center lg:items-start lg:text-left shrink-0 md:pt-4 w-full"
             >
+              <div className="hidden md:block">
+                <ChiikawaMascot
+                  variant="desktopDrift"
+                  className="absolute left-[12rem] top-2 lg:left-[18rem] lg:top-10 xl:left-[24rem] 2xl:left-[30rem]"
+                />
+              </div>
               <div className="relative">
-                 {/* Desktop Mascot */}
-                 <div className="hidden md:block">
-                   <ChiikawaMascot />
-                 </div>
                  <h1 
                     className="text-8xl md:text-[10rem] font-extralight tracking-normal text-white drop-shadow-2xl m-0 leading-none"
                     aria-label={`${weatherData?.temperature?.toFixed(0) ?? '--'} degrees`}
