@@ -47,7 +47,6 @@ const fetchWeatherAndVibe = async (
   requestId: string,
   signal: AbortSignal,
   set: (partial: Partial<AppState>) => void,
-  get: () => AppState,
   onProgress?: (msg: string) => void,
 ) => {
   evictCache(weatherCache);
@@ -129,7 +128,7 @@ export const useStore = create<AppState>((set, get) => ({
       }
       set({ locations, activeLocationIndex: 0 });
 
-      await fetchWeatherAndVibe(locations[0], requestId, signal, set, get, log);
+      await fetchWeatherAndVibe(locations[0], requestId, signal, set, log);
       // Clear loading logs after successful init
       if (lastRequestId === requestId) set({ loadingLogs: [] });
     } catch (e: unknown) {
@@ -149,7 +148,7 @@ export const useStore = create<AppState>((set, get) => ({
     set({ activeLocationIndex: index, loading: true, vibeLoading: true, vibeData: null, error: null });
 
     try {
-      await fetchWeatherAndVibe(locations[index], requestId, signal, set, get);
+      await fetchWeatherAndVibe(locations[index], requestId, signal, set);
     } catch (e: unknown) {
       if (signal.aborted || lastRequestId !== requestId) return;
       set({ error: e instanceof Error ? e.message : 'Failed to switch location', loading: false });
