@@ -118,7 +118,7 @@ export const VibeWidget = memo(({ vibeData, loading }: VibeWidgetProps) => {
                 )}
                 {/* Play/View Overlay */}
                 {currentItem.link && (
-                  <a href={currentItem.link} target="_blank" rel="noopener noreferrer" className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity backdrop-blur-sm">
+                  <a href={currentItem.link} target="_blank" rel="noopener noreferrer" className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                     <span className="text-[10px] uppercase font-bold text-white tracking-widest bg-white/20 px-3 py-1 rounded-full">{activeTab === 'book' ? 'Read' : 'Play'}</span>
                   </a>
                 )}
