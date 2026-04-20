@@ -41,43 +41,39 @@ const seedLibrary = {
 };
 
 // ── Music via MusicBrainz + CoverArtArchive ──
+// KEY INSIGHT: img tags load CoverArtArchive URLs without CORS restriction — only fetch() is blocked.
+// MusicBrainz release objects include a `cover-art-archive.front` boolean; use that to avoid any HEAD checks.
 const fetchMusic = async (query: string): Promise<VibeItem | undefined> => {
   try {
     const res = await fetch(
-      `https://musicbrainz.org/ws/2/release?query=${encodeURIComponent(query)}&fmt=json&limit=5`,
+      `https://musicbrainz.org/ws/2/release?query=${encodeURIComponent(query)}&fmt=json&limit=10`,
       { headers: { 'User-Agent': 'iWe-WeatherApp/1.0 (https://iwe.hackx64.eu.org)' } }
     );
     if (!res.ok) return undefined;
     const data = await res.json();
     const releases: any[] = data.releases || [];
-    // Iterate releases until we find one with cover art
-    for (const release of releases) {
-      const coverUrl = `https://coverartarchive.org/release/${release.id}/front-500`;
-      const check = await fetch(coverUrl, { method: 'HEAD' });
-      if (check.ok || check.status === 307) {
-        const artistName = release['artist-credit']?.[0]?.artist?.name || '';
-        return {
-          type: 'music',
-          title: release.title || query,
-          subtitle: artistName,
-          coverUrl,
-          link: `https://musicbrainz.org/release/${release.id}`,
-        };
-      }
-    }
-    // Fallback: return with placeholder cover
-    if (releases.length > 0) {
-      const r = releases[0];
-      return {
-        type: 'music',
-        title: r.title || query,
-        subtitle: r['artist-credit']?.[0]?.artist?.name || '',
-        coverUrl: '',
-        link: `https://musicbrainz.org/release/${r.id}`,
-      };
-    }
+
+    // Find first release that MusicBrainz confirms has a front cover
+    const withCover = releases.find(r => r['cover-art-archive']?.front === true);
+    const best = withCover || releases[0];
+    if (!best) return undefined;
+
+    const artistName = best['artist-credit']?.[0]?.artist?.name || '';
+    // Direct URL — <img src> follows redirects without CORS; no HEAD fetch needed
+    const coverUrl = withCover
+      ? `https://coverartarchive.org/release/${best.id}/front-500`
+      : '';
+
+    return {
+      type: 'music',
+      title: best.title || query,
+      subtitle: artistName,
+      coverUrl,
+      link: `https://musicbrainz.org/release/${best.id}`,
+    };
   } catch (e) {
     console.warn('MusicBrainz fetch failed for', query);
+
   }
   return undefined;
 };
