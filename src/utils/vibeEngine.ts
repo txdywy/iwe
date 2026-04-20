@@ -68,25 +68,24 @@ const fetchITunes = async (query: string, media: 'music' | 'movie'): Promise<Vib
   return undefined;
 };
 
-const fetchBook = async (query: string): Promise<VibeItem | undefined> => {
+const fetchITunesBook = async (query: string): Promise<VibeItem | undefined> => {
   try {
-    const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=1`);
+    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=ebook&limit=1`);
     if (!res.ok) return undefined;
     const data = await res.json();
-    const item = data.items?.[0]?.volumeInfo;
+    const item = data.results[0];
     if (item) {
-      // Google books thumbnail is often http, need to upgrade intercept to https
-      const coverUrl = item.imageLinks?.thumbnail ? item.imageLinks.thumbnail.replace('http:', 'https:') : `https://ui-avatars.com/api/?name=${encodeURIComponent(item.title || query)}&background=random`;
+      const hiResCover = item.artworkUrl100 ? item.artworkUrl100.replace('100x100bb', '600x600bb') : `https://ui-avatars.com/api/?name=${encodeURIComponent(item.trackName || query)}&background=random`;
       return {
         type: 'book',
-        title: item.title || query,
-        subtitle: item.authors?.[0] || 'Unknown Author',
-        coverUrl,
-        link: item.infoLink
+        title: item.trackName || query,
+        subtitle: item.artistName || 'Unknown Author',
+        coverUrl: hiResCover,
+        link: item.trackViewUrl
       };
     }
   } catch (e) {
-    console.warn(`Book fetch failed for ${query}`);
+    console.warn(`iTunes Book fetch failed for ${query}`);
   }
   return undefined;
 };
@@ -97,7 +96,7 @@ export const generateVibe = async (condition: 'Clear' | 'Clouds' | 'Rain' | 'Sno
   const [music, movie, book] = await Promise.all([
     fetchITunes(pickRandom(seeds.music), 'music'),
     fetchITunes(pickRandom(seeds.movie), 'movie'),
-    fetchBook(pickRandom(seeds.book)),
+    fetchITunesBook(pickRandom(seeds.book)),
   ]);
 
   return {
