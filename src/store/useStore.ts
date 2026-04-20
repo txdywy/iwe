@@ -15,7 +15,7 @@ interface AppState {
   vibeLoading: boolean;
   loadingLogs: string[];
   error: string | null;
-  lastRequestId: number;
+  lastRequestId: string;
   initApp: () => Promise<void>;
   setActiveLocation: (index: number) => Promise<void>;
 }
@@ -29,12 +29,15 @@ export const useStore = create<AppState>((set, get) => ({
   vibeLoading: true,
   loadingLogs: [],
   error: null,
-  lastRequestId: 0,
+  lastRequestId: '',
   
   initApp: async () => {
-    const requestId = Date.now();
+    const requestId = crypto.randomUUID();
     set({ loading: true, error: null, loadingLogs: ['Initializing deep-scan telemetry...'], lastRequestId: requestId });
-    const log = (msg: string) => set((s) => ({ loadingLogs: [...s.loadingLogs, msg].slice(-20) }));
+    const log = (msg: string) => set((s) => {
+      const newLogs = [...s.loadingLogs, msg];
+      return { loadingLogs: newLogs.length > 20 ? newLogs.slice(newLogs.length - 20) : newLogs };
+    });
 
     try {
       const locations = await getBestLocations(log);
@@ -74,7 +77,7 @@ export const useStore = create<AppState>((set, get) => ({
     const { locations } = get();
     if (index < 0 || index >= locations.length) return;
     
-    const requestId = Date.now();
+    const requestId = crypto.randomUUID();
     set({ activeLocationIndex: index, loading: true, vibeLoading: true, error: null, lastRequestId: requestId });
     
     try {

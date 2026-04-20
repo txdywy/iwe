@@ -53,8 +53,7 @@ interface MusicBrainzRelease {
 const fetchMusic = async (query: string): Promise<VibeItem | undefined> => {
   try {
     const res = await fetch(
-      `https://musicbrainz.org/ws/2/release?query=${encodeURIComponent(query)}&fmt=json&limit=5`,
-      { headers: { 'User-Agent': 'iWe-WeatherApp/1.0 (https://iwe.hackx64.eu.org)' } }
+      `https://musicbrainz.org/ws/2/release?query=${encodeURIComponent(query)}&fmt=json&limit=5`
     );
     if (!res.ok) return undefined;
     const data = await res.json();

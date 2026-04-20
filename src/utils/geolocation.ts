@@ -6,6 +6,8 @@ export interface GeoLocationResult {
   country?: string;
   confidence: number;
   ip?: string;
+  ipv4?: string;
+  ipv6?: string;
   isp?: string;
 }
 
@@ -43,11 +45,25 @@ export const getGPSLocation = (): Promise<GeoLocationResult | null> => {
 
 export const getIPLocation = async (ip?: string, source: 'ip'|'webrtc' = 'ip'): Promise<GeoLocationResult | null> => {
   try {
-    const url = ip ? `https://ipapi.co/${ip}/json/` : 'https://ipapi.co/json/';
+    let ipv4: string | undefined;
+    let ipv6: string | undefined;
+    
+    if (!ip) {
+      const [v4Res, v6Res] = await Promise.allSettled([
+        fetch('https://api.ipify.org?format=json').then(r => r.json()),
+        fetch('https://api6.ipify.org?format=json').then(r => r.json())
+      ]);
+      if (v4Res.status === 'fulfilled' && v4Res.value?.ip) ipv4 = v4Res.value.ip;
+      if (v6Res.status === 'fulfilled' && v6Res.value?.ip) ipv6 = v6Res.value.ip;
+    }
+
+    const targetIp = ip || ipv4 || ipv6 || '';
+    const url = targetIp ? `https://ipapi.co/${targetIp}/json/` : 'https://ipapi.co/json/';
     const res = await fetch(url);
     if (!res.ok) return null;
     const data = await res.json();
     if (data.error) return null;
+    
     return {
       source: source === 'ip' ? 'ip (overseas)' : source,
       lat: data.latitude,
@@ -55,7 +71,9 @@ export const getIPLocation = async (ip?: string, source: 'ip'|'webrtc' = 'ip'): 
       city: data.city,
       country: data.country_name,
       confidence: source === 'webrtc' ? 90 : 80,
-      ip: data.ip,
+      ip: ip || targetIp,
+      ipv4,
+      ipv6,
       isp: data.org
     };
   } catch {
@@ -225,6 +243,12 @@ export const getBestLocations = async (onProgress?: (msg: string) => void): Prom
       isDuplicate.source = `${isDuplicate.source}+${loc.source}`;
       if (loc.ip && !isDuplicate.ip?.includes(loc.ip)) {
         isDuplicate.ip = isDuplicate.ip ? `${isDuplicate.ip}, ${loc.ip}` : loc.ip;
+      }
+      if (loc.ipv4 && !isDuplicate.ipv4?.includes(loc.ipv4)) {
+        isDuplicate.ipv4 = isDuplicate.ipv4 ? `${isDuplicate.ipv4}, ${loc.ipv4}` : loc.ipv4;
+      }
+      if (loc.ipv6 && !isDuplicate.ipv6?.includes(loc.ipv6)) {
+        isDuplicate.ipv6 = isDuplicate.ipv6 ? `${isDuplicate.ipv6}, ${loc.ipv6}` : loc.ipv6;
       }
       if (loc.isp && !isDuplicate.isp?.includes(loc.isp)) {
         isDuplicate.isp = isDuplicate.isp ? `${isDuplicate.isp}, ${loc.isp}` : loc.isp;

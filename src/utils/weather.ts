@@ -108,11 +108,18 @@ const fetchWttrIn = async (city?: string, lat?: number, lon?: number): Promise<W
 
     const forecastList: DailyForecast[] = [];
     data.weather?.forEach((day: WttrForecast) => {
+      // Map basic wttr descriptions to an approximate WMO code for consistent emoji mapping
+      let wc = 0;
+      if (desc.includes('thunder') || desc.includes('storm')) wc = 95;
+      else if (desc.includes('snow') || desc.includes('ice')) wc = 71;
+      else if (desc.includes('rain') || desc.includes('drizzle') || desc.includes('shower')) wc = 61;
+      else if (desc.includes('cloud') || desc.includes('overcast')) wc = 3;
+
       forecastList.push({
         time: day.date,
         maxTemp: parseFloat(day.maxtempC),
         minTemp: parseFloat(day.mintempC),
-        weatherCode: 0, // wttr doesn't provide strict standard WMO codes easily mapped here
+        weatherCode: wc, 
       });
     });
 
