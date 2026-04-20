@@ -1,6 +1,6 @@
 import { useState, memo } from 'react';
 import { motion } from 'framer-motion';
-import kuliImage from '../assets/kuli.jpg';
+import kuliImage from '../assets/kuli.png';
 
 export const ChiikawaMascot = memo(() => {
   const [randomDuration] = useState(() => 3 + Math.random());
