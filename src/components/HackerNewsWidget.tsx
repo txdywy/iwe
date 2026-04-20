@@ -7,7 +7,6 @@ interface HNStory {
   url?: string;
   score: number;
   by: string;
-  translatedTitle?: string;
 }
 
 export const HackerNewsWidget: React.FC = () => {
@@ -26,20 +25,7 @@ export const HackerNewsWidget: React.FC = () => {
         const storyPromises = top10.map(async (id) => {
           const sRes = await fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`);
           const story: HNStory = await sRes.json();
-          
-          let translatedTitle = story.title;
-          try {
-             const tRes = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-CN&dt=t&q=${encodeURIComponent(story.title)}`);
-             if (tRes.ok) {
-                const data = await tRes.json();
-                // Google translate array response format extraction
-                translatedTitle = data[0].map((t: unknown[]) => t[0]).join('');
-             }
-          } catch {
-             // Ignore translation failure
-          }
-          
-          return { ...story, translatedTitle };
+          return story;
         });
 
         const fetchedStories = await Promise.all(storyPromises);
@@ -70,13 +56,13 @@ export const HackerNewsWidget: React.FC = () => {
   return (
     <div className="w-full max-w-sm md:rounded-[32px] md:border md:border-white/20 md:bg-white/10 md:backdrop-blur-2xl md:px-5 md:pt-4 md:pb-5 shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] flex flex-col gap-3">
       {/* Header */}
-      <div className="flex items-center gap-2 mb-1 px-1">
+      <div className="flex items-center gap-2 mb-1 px-1 md:mt-0 mt-2">
         <span className="text-[10px] uppercase font-bold tracking-[0.18em] text-[#ff6600]">Hacker News Top 10</span>
         <div className="flex-1 h-px bg-white/10" />
       </div>
       
-      {/* Scrollable Content */}
-      <div className="flex flex-col gap-2 max-h-[30vh] overflow-y-auto no-scrollbar pr-1 mobile-sheet">
+      {/* Content */}
+      <div className="flex flex-col gap-2">
         {stories.map((story, i) => (
           <a
             key={story.id}
@@ -88,13 +74,8 @@ export const HackerNewsWidget: React.FC = () => {
             <span className="text-[#ff6600] font-bold text-sm min-w-[18px] mt-0.5">{i + 1}.</span>
             <div className="flex flex-col gap-1">
               <span className="text-white/90 text-sm font-medium leading-tight group-hover:text-white transition-colors">
-                {story.translatedTitle || story.title}
+                {story.title}
               </span>
-              {story.translatedTitle && story.translatedTitle !== story.title && (
-                <span className="text-white/40 text-[11px] line-clamp-1">
-                  {story.title}
-                </span>
-              )}
               <div className="flex items-center gap-2 text-[10px] text-white/30 uppercase tracking-wider font-semibold mt-1">
                 <span>{story.score} pts</span>
                 <span>•</span>

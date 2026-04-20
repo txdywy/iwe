@@ -4,13 +4,13 @@
 
 @layer base {
   body {
-    @apply m-0 p-0 overflow-hidden bg-black text-white antialiased;
+    @apply m-0 p-0 bg-black text-white antialiased;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
 }
 
 #root {
-  @apply w-screen h-screen m-0 p-0 overflow-hidden relative;
+  @apply w-full min-h-screen m-0 p-0 relative;
 }
 
 /* Mobile bottom sheet: thin, glowing custom scrollbar */

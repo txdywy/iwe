@@ -49,22 +49,26 @@ function App() {
   const condition = weatherData?.condition || 'Clear';
 
   return (
-    <main className="relative h-[100dvh] w-screen overflow-hidden font-sans">
-      <WeatherScene condition={condition} />
+    <main className="relative min-h-screen w-full font-sans">
+      {/* Weather Scene Fixed Background */}
+      <div className="fixed inset-0 -z-10 pointer-events-none">
+        <WeatherScene condition={condition} />
+      </div>
 
-      {/* Main Container */}
-      <div className="absolute inset-0 flex flex-col p-6 pt-12 sm:p-12 z-10 pointer-events-none pb-8 h-[100dvh] justify-between">
+      {/* Main Content Container - Allows native page scrolling */}
+      <div className="relative flex flex-col p-6 pt-12 sm:p-12 z-10 min-h-screen gap-8 md:gap-12 pb-16">
         
-        {/* Top Header Row (Temp & Panels) */}
-        <div className="flex flex-col md:flex-row md:items-start md:justify-between w-full md:h-auto gap-4 md:gap-8 shrink-0 mt-4 md:mt-0">
+        {/* Top Section (Two Columns on Desktop) */}
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between w-full gap-8">
           
+          {/* Left Column: Current Weather (Fixed positioned conceptually, but scrolls with page if tall) */}
           <AnimatePresence mode="wait">
             <motion.div 
               key={activeLocationIndex}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="relative flex flex-col gap-1 sm:gap-2 pointer-events-auto items-center text-center md:items-start md:text-left mt-0 shrink-0"
+              className="relative flex flex-col gap-1 sm:gap-2 items-center text-center md:items-start md:text-left shrink-0 md:sticky md:top-12"
             >
               <div className="relative">
                  <ChiikawaMascot />
@@ -92,13 +96,15 @@ function App() {
             </motion.div>
           </AnimatePresence>
 
-          {/* Desktop Sidebar: Location Drawer & Vibe Widget */}
-          <div className="pointer-events-auto md:w-80 shrink-0 mx-auto md:mx-0 w-full max-w-sm hidden md:block">
+          {/* Right Column: Desktop Sidebar */}
+          <div className="md:w-80 shrink-0 mx-auto md:mx-0 w-full max-w-sm hidden md:flex flex-col gap-6">
+            
+            {/* Desktop Location List */}
             <div className="rounded-[32px] border border-white/20 bg-white/10 p-5 backdrop-blur-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.5)]">
               <h3 className="mb-4 text-[11px] font-bold tracking-[0.2em] text-white/50 text-left uppercase pl-2">
                 Locations
               </h3>
-              <div className="flex flex-col gap-2 max-h-[40vh] overflow-y-auto no-scrollbar scroll-smooth">
+              <div className="flex flex-col gap-2">
                 {locations.map((loc, idx) => (
                   <LocationButton
                     key={idx}
@@ -111,20 +117,45 @@ function App() {
               </div>
             </div>
             
-            <div className="mt-6">
-              <VibeWidget vibeData={vibeData} loading={vibeLoading} />
-            </div>
+            {/* Desktop Vibe */}
+            <VibeWidget vibeData={vibeData} loading={vibeLoading} />
 
-            <div className="mt-6">
-              <HackerNewsWidget />
-            </div>
+            {/* Desktop Hacker News */}
+            <HackerNewsWidget />
           </div>
         </div>
 
         {/* Desktop Bottom Drawer For Forecast */}
-        <div className="w-full flex-col gap-4 mt-auto pointer-events-auto z-20 shrink-0 hidden md:flex">
-           {weatherData?.forecast && weatherData.forecast.length > 0 && (
-             <div className="w-full overflow-x-auto no-scrollbar rounded-[32px] border border-white/20 bg-white/5 backdrop-blur-xl p-6 shadow-2xl flex gap-6 snap-x snap-mandatory">
+        {weatherData?.forecast && weatherData.forecast.length > 0 && (
+          <div className="w-full overflow-x-auto no-scrollbar rounded-[32px] border border-white/20 bg-white/5 backdrop-blur-xl p-6 shadow-2xl gap-6 snap-x snap-mandatory hidden md:flex mt-auto">
+             {weatherData.forecast.map((fc, i) => (
+               <ForecastCard
+                 key={i}
+                 time={fc.time}
+                 emoji={getWeatherEmoji(fc.weatherCode)}
+                 maxTemp={fc.maxTemp}
+                 minTemp={fc.minTemp}
+               />
+             ))}
+          </div>
+        )}
+
+        {/* ── Mobile Flow Layout ── (md:hidden) */}
+        <div className="md:hidden flex flex-col w-full shrink-0 gap-6 mt-4">
+
+          {/* 1. Vibe Widget */}
+          <div className="w-full">
+            <VibeWidget vibeData={vibeData} loading={vibeLoading} />
+          </div>
+
+          {/* 2. Forecast horizontal scroll */}
+          {weatherData?.forecast && weatherData.forecast.length > 0 && (
+            <div className="w-full">
+              <div className="flex items-center gap-2 mb-2 px-1">
+                <span className="text-[10px] uppercase font-bold tracking-[0.18em] text-white/40">Forecast</span>
+                <div className="flex-1 h-px bg-white/10" />
+              </div>
+              <div className="overflow-x-auto no-scrollbar scroll-fade-x flex gap-2 py-2">
                 {weatherData.forecast.map((fc, i) => (
                   <ForecastCard
                     key={i}
@@ -132,81 +163,39 @@ function App() {
                     emoji={getWeatherEmoji(fc.weatherCode)}
                     maxTemp={fc.maxTemp}
                     minTemp={fc.minTemp}
-                  />
-                ))}
-             </div>
-           )}
-        </div>
-
-        {/* ── Mobile Bottom Sheet ── (md:hidden) */}
-        <div className="md:hidden flex flex-col w-full mt-auto pointer-events-auto z-20 shrink-0 gap-3 pb-6">
-
-          {/* Pull indicator bar */}
-          <div className="flex justify-center pt-1 pb-0">
-            <motion.div
-              animate={{ scaleX: [1, 0.7, 1], opacity: [0.4, 0.7, 0.4] }}
-              transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
-              className="w-10 h-1 rounded-full bg-white/40"
-            />
-          </div>
-
-          {/* Scrollable stack */}
-          <div className="flex flex-col gap-3 overflow-y-auto mobile-sheet max-h-[52vh] px-1">
-
-            {/* 1. Vibe Widget — full width on mobile */}
-            <div className="shrink-0 w-full">
-              <VibeWidget vibeData={vibeData} loading={vibeLoading} />
-            </div>
-
-            {/* 2. Forecast horizontal scroll */}
-            {weatherData?.forecast && weatherData.forecast.length > 0 && (
-              <div className="shrink-0 w-full">
-                <div className="flex items-center gap-2 mb-2 px-1">
-                  <span className="text-[10px] uppercase font-bold tracking-[0.18em] text-white/40">Forecast</span>
-                  <div className="flex-1 h-px bg-white/10" />
-                </div>
-                <div className="overflow-x-auto no-scrollbar scroll-fade-x flex gap-2 py-2">
-                  {weatherData.forecast.map((fc, i) => (
-                    <ForecastCard
-                      key={i}
-                      time={fc.time}
-                      emoji={getWeatherEmoji(fc.weatherCode)}
-                      maxTemp={fc.maxTemp}
-                      minTemp={fc.minTemp}
-                      isMobile
-                      isActive={i === 0}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* 3. Location Selector — horizontal pill carousel */}
-            <div className="shrink-0 w-full">
-              <div className="flex items-center gap-2 mb-2 px-1">
-                <span className="text-[10px] uppercase font-bold tracking-[0.18em] text-white/40">Locations</span>
-                <div className="flex-1 h-px bg-white/10" />
-              </div>
-              <div className="overflow-x-auto no-scrollbar scroll-fade-x flex gap-2 py-1">
-                {locations.map((loc, idx) => (
-                  <LocationButton
-                    key={idx}
-                    city={loc.city || '...'}
-                    source={loc.source}
-                    isActive={idx === activeLocationIndex}
-                    onClick={() => setActiveLocation(idx)}
                     isMobile
+                    isActive={i === 0}
                   />
                 ))}
               </div>
             </div>
+          )}
 
-            {/* 4. Hacker News Widget */}
-            <div className="shrink-0 w-full mb-4">
-              <HackerNewsWidget />
+          {/* 3. Location Selector — horizontal pill carousel */}
+          <div className="w-full">
+            <div className="flex items-center gap-2 mb-2 px-1">
+              <span className="text-[10px] uppercase font-bold tracking-[0.18em] text-white/40">Locations</span>
+              <div className="flex-1 h-px bg-white/10" />
             </div>
-
+            <div className="overflow-x-auto no-scrollbar scroll-fade-x flex gap-2 py-1">
+              {locations.map((loc, idx) => (
+                <LocationButton
+                  key={idx}
+                  city={loc.city || '...'}
+                  source={loc.source}
+                  isActive={idx === activeLocationIndex}
+                  onClick={() => setActiveLocation(idx)}
+                  isMobile
+                />
+              ))}
+            </div>
           </div>
+
+          {/* 4. Hacker News Widget */}
+          <div className="w-full">
+            <HackerNewsWidget />
+          </div>
+
         </div>
 
       </div>
