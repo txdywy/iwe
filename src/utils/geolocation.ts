@@ -5,6 +5,8 @@ export interface GeoLocationResult {
   city?: string;
   country?: string;
   confidence: number;
+  ip?: string;
+  isp?: string;
 }
 
 const reverseGeocode = async (lat: number, lon: number): Promise<string | undefined> => {
@@ -53,6 +55,8 @@ export const getIPLocation = async (ip?: string, source: 'ip'|'webrtc' = 'ip'): 
       city: data.city,
       country: data.country_name,
       confidence: source === 'webrtc' ? 90 : 80,
+      ip: data.ip,
+      isp: data.org
     };
   } catch {
     return null;
@@ -71,6 +75,7 @@ export const getDomesticIPLocation = async (): Promise<GeoLocationResult | null>
     const p = data.data.location[1];
     const c = data.data.location[2];
     const city = p === c ? p : `${p} ${c}`;
+    const isp = data.data.location[4] || 'Domestic Node';
     
     // We cannot easily get exact lat/lon from ipip json alone, but we can set a dummy or use reverse lookup if needed.
     // For Vibe purposes, we'll map a basic central coordinate or let it just be an extra location badge.
@@ -78,9 +83,11 @@ export const getDomesticIPLocation = async (): Promise<GeoLocationResult | null>
       source: 'ip (domestic)',
       lat: 35.8617,
       lon: 104.1954, // central China roughly
-      city: city || 'Domestic Node',
+      city: city || 'Domestic',
       country: 'China',
       confidence: 79,
+      ip: data.data.ip,
+      isp: isp
     };
   } catch {
     return null;
@@ -105,7 +112,7 @@ export const getWebRTCLocation = (): Promise<GeoLocationResult | null> => {
           // Local IP mask check
           if (ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.')) {
             // Unlikely to geocode local IPs via ipapi.co
-            resolve(null);
+            resolve({ source: 'webrtc (local)', lat: 0, lon: 0, city: 'Local Network', confidence: 10, ip: ip, isp: 'LAN' });
           } else {
             const loc = await getIPLocation(ip, 'webrtc');
             resolve(loc);
@@ -216,6 +223,12 @@ export const getBestLocations = async (onProgress?: (msg: string) => void): Prom
     } else {
       // It is duplicate. Append source info so user knows the power of our sniffer.
       isDuplicate.source = `${isDuplicate.source}+${loc.source}`;
+      if (loc.ip && !isDuplicate.ip?.includes(loc.ip)) {
+        isDuplicate.ip = isDuplicate.ip ? `${isDuplicate.ip}, ${loc.ip}` : loc.ip;
+      }
+      if (loc.isp && !isDuplicate.isp?.includes(loc.isp)) {
+        isDuplicate.isp = isDuplicate.isp ? `${isDuplicate.isp}, ${loc.isp}` : loc.isp;
+      }
     }
   }
 

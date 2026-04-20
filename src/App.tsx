@@ -5,6 +5,7 @@ import { LoadingScreen } from './components/LoadingScreen';
 import { VibeWidget } from './components/VibeWidget';
 import { ChiikawaMascot } from './components/ChiikawaMascot';
 import { HackerNewsWidget } from './components/HackerNewsWidget';
+import { IPDataWidget } from './components/IPDataWidget';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MetricCard, ForecastCard, LocationButton } from './components/WeatherUIComponents';
 import { getWeatherEmoji } from './utils/weatherIcons';
@@ -142,12 +143,17 @@ function App() {
         )}
 
         {/* Row 3: Hacker News Wide Module */}
-        <div className="w-full max-w-7xl pb-10">
+        <div className="w-full max-w-7xl pb-4">
           <HackerNewsWidget />
         </div>
 
+        {/* Row 4: IP Data Module */}
+        <div className="w-full max-w-7xl pb-10">
+          <IPDataWidget />
+        </div>
+
         {/* Mobile-Only Location Pill Scroller (Since sidebar is hidden) */}
-        <div className="md:hidden w-full flex flex-col gap-3">
+        <div className="md:hidden w-full flex flex-col gap-3 pb-8">
            <div className="flex items-center gap-4 mb-1 px-2">
               <span className="text-[11px] uppercase font-black tracking-[0.3em] text-white/40">Locations</span>
               <div className="flex-1 h-px bg-white/10" />
