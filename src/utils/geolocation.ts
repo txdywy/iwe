@@ -299,16 +299,52 @@ export const getBestLocations = async (onProgress?: (msg: string) => void, signa
 
   if (onProgress) onProgress("Cross-referencing and deduplicating coordinates...");
 
-  // Dedup logic: Group locations by roughly same coordinates (dist < ~50km)
+  // Normalize city name for dedup comparison
+  const normalizeCityName = (city?: string): string => {
+    if (!city) return '';
+    // Map common Chinese city names to their English equivalents
+    const zhToEn: Record<string, string> = {
+      '北京': 'beijing', '上海': 'shanghai', '广州': 'guangzhou', '深圳': 'shenzhen',
+      '杭州': 'hangzhou', '成都': 'chengdu', '武汉': 'wuhan', '南京': 'nanjing',
+      '重庆': 'chongqing', '西安': 'xian', '天津': 'tianjin', '苏州': 'suzhou',
+      '长沙': 'changsha', '郑州': 'zhengzhou', '青岛': 'qingdao', '大连': 'dalian',
+      '厦门': 'xiamen', '昆明': 'kunming', '合肥': 'hefei', '福州': 'fuzhou',
+    };
+    // Strip suffixes like "(L10n)", "(TZ)" and normalize
+    const cleaned = city.replace(/\s*\(.*?\)\s*/g, '').trim().toLowerCase();
+    // Check if it's a Chinese name we can map
+    for (const [zh, en] of Object.entries(zhToEn)) {
+      if (cleaned.includes(zh)) return en;
+    }
+    // For multi-word names, take the first significant word
+    return cleaned.split(/[\s,]+/)[0];
+  };
+
+  // Dedup logic: Group locations by same city name OR roughly same coordinates (dist < ~50km)
   const deduped: GeoLocationResult[] = [];
   for (const loc of locations) {
-    const isDuplicate = deduped.find(d => 
-      Math.abs(d.lat - loc.lat) < 0.5 && Math.abs(d.lon - loc.lon) < 0.5
-    );
+    const locCity = normalizeCityName(loc.city);
+    const isDuplicate = deduped.find(d => {
+      // Coordinate proximity check
+      const coordClose = Math.abs(d.lat - loc.lat) < 0.5 && Math.abs(d.lon - loc.lon) < 0.5;
+      // City name match check
+      const dCity = normalizeCityName(d.city);
+      const cityMatch = locCity && dCity && locCity === dCity;
+      return coordClose || cityMatch;
+    });
     if (!isDuplicate) {
       deduped.push(loc);
     } else {
-      // It is duplicate. Append source info so user knows the power of our sniffer.
+      // Merge: keep the higher-confidence coordinates
+      if (loc.confidence > isDuplicate.confidence) {
+        isDuplicate.lat = loc.lat;
+        isDuplicate.lon = loc.lon;
+        isDuplicate.confidence = loc.confidence;
+        // Prefer the more readable city name
+        if (loc.city && !loc.city.includes('(')) {
+          isDuplicate.city = loc.city;
+        }
+      }
       isDuplicate.source = `${isDuplicate.source}+${loc.source}`;
       
       const appendUnique = (arr: string[] | undefined, newItems: string[] | undefined) => {
