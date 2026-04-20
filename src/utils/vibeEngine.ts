@@ -1,0 +1,105 @@
+export interface VibeItem {
+  title: string;
+  subtitle: string;
+  coverUrl: string;
+  link?: string;
+  type: 'music' | 'movie' | 'book';
+}
+
+export interface VibeRecommendation {
+  music?: VibeItem;
+  movie?: VibeItem;
+  book?: VibeItem;
+}
+
+const seedLibrary = {
+  Clear: {
+    music: ["Indie Pop", "Sunny Day Real Estate", "Bossa Nova", "Acoustic Sunrise"],
+    movie: ["Call Me By Your Name", "La La Land", "Spirited Away", "The Grand Budapest Hotel"],
+    book: ["The Great Gatsby", "On the Road", "A Room with a View"]
+  },
+  Rain: {
+    music: ["Lofi Hip Hop", "Ryuichi Sakamoto", "Cigarettes After Sex", "Tchaikovsky"],
+    movie: ["The Garden of Words", "Blade Runner 2049", "In the Mood for Love", "Se7en"],
+    book: ["Norwegian Wood", "Kafka on the Shore", "The Shadow of the Wind"]
+  },
+  Snow: {
+    music: ["Sigur Ros", "Bon Iver", "Ambient Winter", "Chopin Nocturnes"],
+    movie: ["Fargo", "The Shining", "Eternal Sunshine of the Spotless Mind", "Snowpiercer"],
+    book: ["The Girl with the Dragon Tattoo", "A Wild Sheep Chase", "Smilla's Sense of Snow"]
+  },
+  Clouds: {
+    music: ["Radiohead", "Shoegaze", "The National", "Post-Rock"],
+    movie: ["Drive", "Lost in Translation", "Her", "Good Will Hunting"],
+    book: ["The Catcher in the Rye", "Never Let Me Go", "1984"]
+  },
+  Thunderstorm: {
+    music: ["Hans Zimmer", "Dark Synthwave", "Nine Inch Nails", "Beethoven Symphony 9"],
+    movie: ["The Dark Knight", "Inception", "Mad Max Fury Road", "Matrix"],
+    book: ["Frankenstein", "Dracula", "Dune", "The Call of Cthulhu"]
+  }
+};
+
+const pickRandom = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
+
+// Fetch from open APIs
+const fetchITunes = async (query: string, media: 'music' | 'movie'): Promise<VibeItem | undefined> => {
+  try {
+    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&media=${media}&limit=1`);
+    if (!res.ok) return undefined;
+    const data = await res.json();
+    const item = data.results[0];
+    if (item) {
+      // iTunes provides 100x100. Let's request better quality by string replace if needed, or 100x100 is fine.
+      const hiResCover = item.artworkUrl100 ? item.artworkUrl100.replace('100x100bb', '600x600bb') : '';
+      return {
+        type: media,
+        title: item.trackName || item.collectionName || query,
+        subtitle: item.artistName || '',
+        coverUrl: hiResCover,
+        link: item.trackViewUrl || item.collectionViewUrl
+      };
+    }
+  } catch (e) {
+    console.warn(`iTunes fetch failed for ${query}`);
+  }
+  return undefined;
+};
+
+const fetchOpenLibrary = async (query: string): Promise<VibeItem | undefined> => {
+  try {
+    const res = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=1`);
+    if (!res.ok) return undefined;
+    const data = await res.json();
+    const doc = data.docs[0];
+    if (doc) {
+      const coverUrl = doc.cover_i ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg` : `https://ui-avatars.com/api/?name=${encodeURIComponent(doc.title)}&background=random`;
+      return {
+        type: 'book',
+        title: doc.title,
+        subtitle: doc.author_name ? doc.author_name[0] : 'Unknown Author',
+        coverUrl,
+        link: `https://openlibrary.org${doc.key}`
+      };
+    }
+  } catch (e) {
+    console.warn(`OpenLibrary fetch failed for ${query}`);
+  }
+  return undefined;
+};
+
+export const generateVibe = async (condition: 'Clear' | 'Clouds' | 'Rain' | 'Snow' | 'Thunderstorm'): Promise<VibeRecommendation> => {
+  const seeds = seedLibrary[condition] || seedLibrary.Clear;
+  
+  const [music, movie, book] = await Promise.all([
+    fetchITunes(pickRandom(seeds.music), 'music'),
+    fetchITunes(pickRandom(seeds.movie), 'movie'),
+    fetchOpenLibrary(pickRandom(seeds.book)),
+  ]);
+
+  return {
+    music,
+    movie,
+    book
+  };
+};

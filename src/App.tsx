@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useStore } from './store/useStore';
 import { WeatherScene } from './components/WeatherScene';
 import { LoadingScreen } from './components/LoadingScreen';
+import { VibeWidget } from './components/VibeWidget';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const getWeatherEmoji = (code: number) => {
@@ -13,7 +14,7 @@ const getWeatherEmoji = (code: number) => {
 };
 
 function App() {
-  const { locations, activeLocationIndex, weatherData, loading, error, initApp, setActiveLocation } = useStore();
+  const { locations, activeLocationIndex, weatherData, vibeData, loading, vibeLoading, error, initApp, setActiveLocation } = useStore();
 
   useEffect(() => {
     initApp();
@@ -121,6 +122,10 @@ function App() {
                 ))}
               </div>
             </div>
+            
+            <div className="mt-6">
+              <VibeWidget vibeData={vibeData} loading={vibeLoading} />
+            </div>
           </div>
         </div>
 
@@ -185,6 +190,8 @@ function App() {
                 ))}
               </div>
             </div>
+
+            <VibeWidget vibeData={vibeData} loading={vibeLoading} />
 
         </div>
 
