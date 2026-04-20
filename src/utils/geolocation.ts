@@ -1,88 +1,127 @@
 export interface GeoLocationResult {
-  source: 'gps' | 'ip' | 'timezone';
+  source: 'gps' | 'ip' | 'webrtc' | 'l10n' | 'timezone';
   lat: number;
   lon: number;
   city?: string;
   country?: string;
-  confidence: number; // 0-100
+  confidence: number;
 }
 
-/**
- * Get coordinates using HTML5 Geolocation API
- */
+const reverseGeocode = async (lat: number, lon: number): Promise<string | undefined> => {
+  try {
+    const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`);
+    if (res.ok) {
+      const data = await res.json();
+      return data.city || data.locality || data.principalSubdivision;
+    }
+  } catch (e) {
+    console.error('Reverse geocode failed', e);
+  }
+  return undefined;
+};
+
 export const getGPSLocation = (): Promise<GeoLocationResult | null> => {
   return new Promise((resolve) => {
     if (!navigator.geolocation) {
       resolve(null);
       return;
     }
-
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const lat = position.coords.latitude;
         const lon = position.coords.longitude;
-        let city = 'GPS Location';
-        
-        try {
-          const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`);
-          if (res.ok) {
-            const data = await res.json();
-            city = data.city || data.locality || data.principalSubdivision || 'GPS Location';
-          }
-        } catch (e) {
-          console.error('Reverse geocode failed', e);
-        }
-
-        resolve({
-          source: 'gps',
-          lat,
-          lon,
-          city,
-          confidence: 100,
-        });
+        const city = await reverseGeocode(lat, lon) || 'GPS Location';
+        resolve({ source: 'gps', lat, lon, city, confidence: 100 });
       },
-      () => {
-        resolve(null);
-      },
+      () => resolve(null),
       { timeout: 5000, maximumAge: 60000, enableHighAccuracy: false }
     );
   });
 };
 
-/**
- * Get rough location using public IP API
- */
-export const getIPLocation = async (): Promise<GeoLocationResult | null> => {
+export const getIPLocation = async (ip?: string, source: 'ip'|'webrtc' = 'ip'): Promise<GeoLocationResult | null> => {
   try {
-    const res = await fetch('https://ipapi.co/json/');
+    const url = ip ? `https://ipapi.co/${ip}/json/` : 'https://ipapi.co/json/';
+    const res = await fetch(url);
     if (!res.ok) return null;
     const data = await res.json();
+    if (data.error) return null;
     return {
-      source: 'ip',
+      source,
       lat: data.latitude,
       lon: data.longitude,
       city: data.city,
       country: data.country_name,
-      confidence: 80,
+      confidence: source === 'webrtc' ? 90 : 80,
     };
   } catch (error) {
-    console.error('IP Location failed', error);
     return null;
   }
 };
 
-/**
- * Fallback to timezone based rough detection
- * Uses a basic map, can be expanded to rely on open-meteo city search
- */
+export const getWebRTCLocation = (): Promise<GeoLocationResult | null> => {
+  return new Promise((resolve) => {
+    try {
+      const peer = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+      peer.createDataChannel('');
+      peer.createOffer().then(offer => peer.setLocalDescription(offer)).catch(() => resolve(null));
+      peer.onicecandidate = async (event) => {
+        if (!event || !event.candidate) return;
+        const candidate = event.candidate.candidate;
+        // Extract IP
+        const ipRegex = /([0-9]{1,3}(\.[0-9]{1,3}){3}|[a-f0-9]{1,4}(:[a-f0-9]{1,4}){7})/;
+        const match = ipRegex.exec(candidate);
+        if (match) {
+          peer.close();
+          const ip = match[1];
+          // Local IP mask check
+          if (ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.')) {
+            // Unlikely to geocode local IPs via ipapi.co
+            resolve(null);
+          } else {
+            const loc = await getIPLocation(ip, 'webrtc');
+            resolve(loc);
+          }
+        }
+      };
+      setTimeout(() => { peer.close(); resolve(null); }, 3000);
+    } catch (e) {
+      resolve(null);
+    }
+  });
+};
+
+export const getLanguageLocation = (): GeoLocationResult | null => {
+  const lang = navigator.languages?.[0] || navigator.language;
+  // Very basic country/capital mapping
+  const capitals: Record<string, {lat: number, lon: number, city: string}> = {
+    'zh-CN': { lat: 39.9042, lon: 116.4074, city: 'Beijing (L10n)' },
+    'en-US': { lat: 38.9072, lon: -77.0369, city: 'Washington D.C. (L10n)' },
+    'en-GB': { lat: 51.5072, lon: -0.1276, city: 'London (L10n)' },
+    'ja-JP': { lat: 35.6762, lon: 139.6503, city: 'Tokyo (L10n)' },
+    'fr-FR': { lat: 48.8566, lon: 2.3522, city: 'Paris (L10n)' },
+    'ko-KR': { lat: 37.5665, lon: 126.9780, city: 'Seoul (L10n)' },
+  };
+
+  const parsedLang = lang.length >= 2 ? lang.substring(0, 5) : '';
+  if (capitals[parsedLang]) {
+    return {
+      source: 'l10n',
+      ...capitals[parsedLang],
+      confidence: 50,
+    };
+  }
+  return null;
+};
+
 export const getTimezoneLocation = (): GeoLocationResult | null => {
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  // A very basic map just for the absolute worst case fallback
   const tzMap: Record<string, {lat: number, lon: number, city: string}> = {
-    'Asia/Shanghai': { lat: 31.2304, lon: 121.4737, city: 'Shanghai' },
-    'America/New_York': { lat: 40.7128, lon: -74.0060, city: 'New York' },
-    'Europe/London': { lat: 51.5074, lon: -0.1278, city: 'London' },
-    'Asia/Tokyo': { lat: 35.6762, lon: 139.6503, city: 'Tokyo' },
+    'Asia/Shanghai': { lat: 31.2304, lon: 121.4737, city: 'Shanghai (TZ)' },
+    'America/New_York': { lat: 40.7128, lon: -74.0060, city: 'New York (TZ)' },
+    'Europe/London': { lat: 51.5074, lon: -0.1278, city: 'London (TZ)' },
+    'Asia/Tokyo': { lat: 35.6762, lon: 139.6503, city: 'Tokyo (TZ)' },
+    'Australia/Sydney': { lat: -33.8688, lon: 151.2093, city: 'Sydney (TZ)' },
   };
 
   if (tzMap[tz]) {
@@ -95,23 +134,39 @@ export const getTimezoneLocation = (): GeoLocationResult | null => {
   return null;
 };
 
-/**
- * Gets the best available location and a list of alternative locations
- */
 export const getBestLocations = async (): Promise<GeoLocationResult[]> => {
   const locations: GeoLocationResult[] = [];
 
-  // Try GPS (Might prompt user)
-  const gps = await getGPSLocation();
+  // Parallelize fetch where possible without hanging indefinitely
+  const [gps, ip, webrtc] = await Promise.all([
+    getGPSLocation(),
+    getIPLocation(),
+    getWebRTCLocation(),
+  ]);
+
   if (gps) locations.push(gps);
-
-  // Try IP 
-  const ip = await getIPLocation();
   if (ip) locations.push(ip);
+  if (webrtc) locations.push(webrtc);
 
-  // Fallback Timezone
+  const l10n = getLanguageLocation();
+  if (l10n) locations.push(l10n);
+
   const tz = getTimezoneLocation();
   if (tz) locations.push(tz);
 
-  return locations.sort((a, b) => b.confidence - a.confidence);
+  // Dedup logic: Group locations by roughly same coordinates (dist < ~50km)
+  const deduped: GeoLocationResult[] = [];
+  for (const loc of locations) {
+    const isDuplicate = deduped.find(d => 
+      Math.abs(d.lat - loc.lat) < 0.5 && Math.abs(d.lon - loc.lon) < 0.5
+    );
+    if (!isDuplicate) {
+      deduped.push(loc);
+    } else {
+      // It is duplicate. Append source info so user knows the power of our sniffer.
+      isDuplicate.source = `${isDuplicate.source}+${loc.source}` as any;
+    }
+  }
+
+  return deduped.sort((a, b) => b.confidence - a.confidence);
 };

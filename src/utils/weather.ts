@@ -1,36 +1,75 @@
 import type { GeoLocationResult } from './geolocation';
 
+export interface DailyForecast {
+  time: string;
+  maxTemp: number;
+  minTemp: number;
+  weatherCode: number;
+}
+
 export interface WeatherData {
   temperature: number;
   condition: 'Clear' | 'Clouds' | 'Rain' | 'Snow' | 'Thunderstorm';
   precipitationProb: number;
   humidity: number;
+  aqi?: number;
+  uvIndex?: number;
+  forecast?: DailyForecast[];
   sourceUsed: string;
 }
 
-/**
- * Fetches data from Open-Meteo
- */
+const mapWeatherCode = (code: number): WeatherData['condition'] => {
+  if (code >= 1 && code <= 3) return 'Clouds';
+  if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return 'Rain';
+  if (code >= 71 && code <= 77 || code === 85 || code === 86) return 'Snow';
+  if (code >= 95) return 'Thunderstorm';
+  return 'Clear';
+}
+
 const fetchOpenMeteo = async (lat: number, lon: number): Promise<WeatherData | null> => {
   try {
-    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=precipitation_probability,relativehumidity_2m`);
+    // Main weather API + 14-day forecasts
+    // Using daily=weather_code,temperature_2m_max,temperature_2m_min,uv_index_max
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,relative_humidity_2m&hourly=precipitation_probability&daily=weather_code,temperature_2m_max,temperature_2m_min,uv_index_max&timezone=auto&forecast_days=14`;
+    const res = await fetch(url);
     if (!res.ok) return null;
     const data = await res.json();
     
-    // WMO Weather interpretation codes
-    // 0: Clear, 1-3: Partly cloudy, 45-48: Fog, 51-67: Rain, 71-77: Snow, 95-99: Thunderstorm
-    const code = data.current_weather.weathercode;
-    let condition: WeatherData['condition'] = 'Clear';
-    if (code >= 1 && code <= 3) condition = 'Clouds';
-    if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) condition = 'Rain';
-    if (code >= 71 && code <= 77 || code === 85 || code === 86) condition = 'Snow';
-    if (code >= 95) condition = 'Thunderstorm';
+    // Air Quality API
+    let aqi: number | undefined = undefined;
+    try {
+      const aqiRes = await fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=european_aqi`);
+      if (aqiRes.ok) {
+        const aqiData = await aqiRes.json();
+        aqi = aqiData.current?.european_aqi;
+      }
+    } catch {}
+
+    const current = data.current;
+    if (!current) return null;
+
+    const condition = mapWeatherCode(current.weather_code);
+
+    const forecastList: DailyForecast[] = [];
+    if (data.daily?.time) {
+      for (let i = 0; i < data.daily.time.length; i++) {
+        forecastList.push({
+          time: data.daily.time[i],
+          maxTemp: data.daily.temperature_2m_max[i],
+          minTemp: data.daily.temperature_2m_min[i],
+          weatherCode: data.daily.weather_code[i],
+        });
+      }
+    }
 
     return {
-      temperature: data.current_weather.temperature,
+      temperature: current.temperature_2m,
       condition,
       precipitationProb: data.hourly?.precipitation_probability?.[0] || 0,
-      humidity: data.hourly?.relativehumidity_2m?.[0] || 50,
+      humidity: current.relative_humidity_2m || 50,
+      aqi,
+      uvIndex: data.daily?.uv_index_max?.[0], // Today's max UV
+      forecast: forecastList,
       sourceUsed: 'Open-Meteo',
     };
   } catch (e) {
@@ -39,9 +78,6 @@ const fetchOpenMeteo = async (lat: number, lon: number): Promise<WeatherData | n
   }
 };
 
-/**
- * Fetches data from wttr.in (Fallback)
- */
 const fetchWttrIn = async (city?: string, lat?: number, lon?: number): Promise<WeatherData | null> => {
   try {
     const target = city ? city : (lat !== undefined && lon !== undefined ? `${lat},${lon}` : '');
@@ -60,30 +96,36 @@ const fetchWttrIn = async (city?: string, lat?: number, lon?: number): Promise<W
     if (desc.includes('snow') || desc.includes('ice')) condition = 'Snow';
     if (desc.includes('thunder') || desc.includes('storm')) condition = 'Thunderstorm';
 
+    const forecastList: DailyForecast[] = [];
+    data.weather?.forEach((day: any) => {
+      forecastList.push({
+        time: day.date,
+        maxTemp: parseFloat(day.maxtempC),
+        minTemp: parseFloat(day.mintempC),
+        weatherCode: 0, // wttr doesn't provide strict standard WMO codes easily mapped here
+      });
+    });
+
     return {
       temperature: parseFloat(current.temp_C),
       condition,
       precipitationProb: parseFloat(data.weather?.[0]?.hourly?.[0]?.chanceofrain || '0'),
       humidity: parseFloat(current.humidity),
+      uvIndex: parseFloat(current.uvIndex),
+      forecast: forecastList,
       sourceUsed: 'wttr.in',
     };
   } catch (e) {
-    console.error('wttr.in failed', e);
     return null;
   }
 };
 
-/**
- * Aggregate weather data using a fallback waterfall
- */
 export const getAggregatedWeather = async (location: GeoLocationResult): Promise<WeatherData | null> => {
-  // 1. Try Open-Meteo first (Extremely reliable and well-formatted JSON)
   const meteo = await fetchOpenMeteo(location.lat, location.lon);
   if (meteo) return meteo;
 
-  // 2. Fallback to wttr.in 
   const wttr = await fetchWttrIn(location.city, location.lat, location.lon);
   if (wttr) return wttr;
 
-  return null; // Both failed
+  return null;
 };
