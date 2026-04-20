@@ -70,7 +70,9 @@ export const getIPLocation = async (ip?: string, source: 'ip'|'webrtc' = 'ip', s
       lon: data.longitude,
       city: data.city,
       country: data.country_name,
-      confidence: source === 'webrtc' ? 90 : 80,
+      // Overseas IP APIs often return proxy/VPN exit node coordinates,
+      // not the user's real location. Keep confidence lower than domestic sources.
+      confidence: source === 'webrtc' ? 70 : 50,
       ip: [data.ip],
       ipv4: data.version === 'IPv4' ? [data.ip] : [],
       ipv6: data.version === 'IPv6' ? [data.ip] : [],
@@ -336,11 +338,14 @@ export const getBestLocations = async (onProgress?: (msg: string) => void, signa
       deduped.push(loc);
     } else {
       // Merge: keep the higher-confidence coordinates
-      if (loc.confidence > isDuplicate.confidence) {
+      // Domestic sources with mapped city coords are immune to VPN interference,
+      // so prefer them even if confidence is equal
+      const preferLoc = loc.confidence > isDuplicate.confidence
+        || (loc.confidence === isDuplicate.confidence && loc.source.includes('domestic'));
+      if (preferLoc) {
         isDuplicate.lat = loc.lat;
         isDuplicate.lon = loc.lon;
         isDuplicate.confidence = loc.confidence;
-        // Prefer the more readable city name
         if (loc.city && !loc.city.includes('(')) {
           isDuplicate.city = loc.city;
         }
