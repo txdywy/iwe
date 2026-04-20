@@ -1,23 +1,18 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useEffect } from 'react';
-
-const loadingTexts = [
-  "Acquiring global telemetry...",
-  "Calibrating geolocation...",
-  "Bypassing atmospheric nodes...",
-  "Parsing waterfall metrics...",
-  "Rendering 3D environment...",
-];
+import { useStore } from '../store/useStore';
+import { useEffect, useRef } from 'react';
 
 export const LoadingScreen = () => {
-  const [textIndex, setTextIndex] = useState(0);
+  const { loadingLogs } = useStore();
+  const bottomRef = useRef<HTMLDivElement>(null);
 
+  // Auto-scroll to latest log
   useEffect(() => {
-    const interval = setInterval(() => {
-      setTextIndex((prev) => (prev + 1) % loadingTexts.length);
-    }, 1500);
-    return () => clearInterval(interval);
-  }, []);
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [loadingLogs]);
+
+  // Take the last 5 logs to prevent overcrowding the screen
+  const visibleLogs = loadingLogs.slice(-5);
 
   return (
     <motion.div 
@@ -55,19 +50,28 @@ export const LoadingScreen = () => {
            />
         </div>
 
-        <div className="h-6 w-80 flex flex-col items-center">
-          <AnimatePresence mode="wait">
-            <motion.p
-              key={textIndex}
-              initial={{ y: 10, opacity: 0, filter: 'blur(4px)' }}
-              animate={{ y: 0, opacity: 1, filter: 'blur(0px)' }}
-              exit={{ y: -10, opacity: 0, filter: 'blur(4px)' }}
-              transition={{ duration: 0.3 }}
-              className="text-[10px] sm:text-xs uppercase tracking-[0.3em] sm:tracking-[0.4em] text-white/50 font-bold text-center m-0"
-            >
-              {loadingTexts[textIndex]}
-            </motion.p>
-          </AnimatePresence>
+        {/* Real-time Telemetry Dashboard */}
+        <div className="h-40 w-80 sm:w-96 flex flex-col items-start gap-3 overflow-hidden relative p-4 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-md shadow-2xl">
+          <div className="absolute top-2 left-4 text-[8px] font-bold tracking-widest text-white/30 uppercase">SYSTEM TELEMETRY</div>
+          <div className="flex flex-col w-full h-full mt-3 gap-2 justify-end">
+            <AnimatePresence>
+              {visibleLogs.map((log, i) => {
+                const isLast = i === visibleLogs.length - 1;
+                return (
+                  <motion.div
+                    key={log + i}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: isLast ? 1 : 0.4, x: 0, scale: isLast ? 1 : 0.95 }}
+                    exit={{ opacity: 0, scale: 0.8, y: -20 }}
+                    className={`text-[10px] sm:text-xs font-mono tracking-wider break-words ${isLast ? 'text-white font-bold drop-shadow-md' : 'text-white/60'}`}
+                  >
+                    <span className="text-blue-400 mr-2">{'>'}</span> {log}
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+            <div ref={bottomRef} />
+          </div>
         </div>
       </div>
     </motion.div>

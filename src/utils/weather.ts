@@ -120,12 +120,20 @@ const fetchWttrIn = async (city?: string, lat?: number, lon?: number): Promise<W
   }
 };
 
-export const getAggregatedWeather = async (location: GeoLocationResult): Promise<WeatherData | null> => {
+export const getAggregatedWeather = async (location: GeoLocationResult, onProgress?: (msg: string) => void): Promise<WeatherData | null> => {
+  if (onProgress) onProgress(`[METEO] Parsing atmospheric layers for [${location.lat.toFixed(2)}, ${location.lon.toFixed(2)}]...`);
   const meteo = await fetchOpenMeteo(location.lat, location.lon);
-  if (meteo) return meteo;
+  if (meteo) {
+    if (onProgress) onProgress(`[METEO] Synced! Condition: ${meteo.condition}, ${meteo.temperature}°`);
+    return meteo;
+  }
 
+  if (onProgress) onProgress(`[WTTR] Fallback parsing waterfall metrics...`);
   const wttr = await fetchWttrIn(location.city, location.lat, location.lon);
-  if (wttr) return wttr;
+  if (wttr) {
+    if (onProgress) onProgress(`[WTTR] Synced! Condition: ${wttr.condition}, ${wttr.temperature}°`);
+    return wttr;
+  }
 
   return null;
 };

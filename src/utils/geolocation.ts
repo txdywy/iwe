@@ -134,14 +134,24 @@ export const getTimezoneLocation = (): GeoLocationResult | null => {
   return null;
 };
 
-export const getBestLocations = async (): Promise<GeoLocationResult[]> => {
+export const getBestLocations = async (onProgress?: (msg: string) => void): Promise<GeoLocationResult[]> => {
   const locations: GeoLocationResult[] = [];
+  if (onProgress) onProgress("Initializing multi-layer geographic probes...");
 
   // Parallelize fetch where possible without hanging indefinitely
   const [gps, ip, webrtc] = await Promise.all([
-    getGPSLocation(),
-    getIPLocation(),
-    getWebRTCLocation(),
+    getGPSLocation().then(res => {
+      if (res && onProgress) onProgress(`[GPS] Satellite lock: ${res.city || 'Coordinates acquired'}`);
+      return res;
+    }),
+    getIPLocation().then(res => {
+      if (res && onProgress) onProgress(`[IP] Node traced via Backbone: ${res.city || 'Unknown'}`);
+      return res;
+    }),
+    getWebRTCLocation().then(res => {
+      if (res && onProgress) onProgress(`[STUN] WebRTC proxy bypassed: ${res.city || 'Unknown'}`);
+      return res;
+    }),
   ]);
 
   if (gps) locations.push(gps);
@@ -149,10 +159,18 @@ export const getBestLocations = async (): Promise<GeoLocationResult[]> => {
   if (webrtc) locations.push(webrtc);
 
   const l10n = getLanguageLocation();
-  if (l10n) locations.push(l10n);
+  if (l10n) {
+    if (onProgress) onProgress(`[L10N] Browser footprint detected: ${typeof l10n.city === 'string' ? l10n.city : 'Locale set'}`);
+    locations.push(l10n);
+  }
 
   const tz = getTimezoneLocation();
-  if (tz) locations.push(tz);
+  if (tz) {
+    if (onProgress) onProgress(`[TIMEZONE] System clock synced: ${tz.city}`);
+    locations.push(tz);
+  }
+
+  if (onProgress) onProgress("Cross-referencing and deduplicating coordinates...");
 
   // Dedup logic: Group locations by roughly same coordinates (dist < ~50km)
   const deduped: GeoLocationResult[] = [];

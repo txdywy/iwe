@@ -13,6 +13,7 @@ interface AppState {
   vibeData: VibeRecommendation | null;
   loading: boolean;
   vibeLoading: boolean;
+  loadingLogs: string[];
   error: string | null;
   initApp: () => Promise<void>;
   setActiveLocation: (index: number) => Promise<void>;
@@ -25,12 +26,15 @@ export const useStore = create<AppState>((set, get) => ({
   vibeData: null,
   loading: true,
   vibeLoading: true,
+  loadingLogs: [],
   error: null,
   
   initApp: async () => {
-    set({ loading: true, error: null });
+    set({ loading: true, error: null, loadingLogs: ['Initializing deep-scan telemetry...'] });
+    const log = (msg: string) => set((s) => ({ loadingLogs: [...s.loadingLogs, msg] }));
+
     try {
-      const locations = await getBestLocations();
+      const locations = await getBestLocations(log);
       if (locations.length === 0) {
         set({ error: 'Failed to determine any location.', loading: false });
         return;
@@ -38,7 +42,7 @@ export const useStore = create<AppState>((set, get) => ({
       set({ locations, activeLocationIndex: 0 });
       
       // Fetch weather for the best location
-      const weather = await getAggregatedWeather(locations[0]);
+      const weather = await getAggregatedWeather(locations[0], log);
       set({ weatherData: weather, loading: false });
 
       if (weather) {
