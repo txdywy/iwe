@@ -120,22 +120,26 @@ const fetchMovie = async (query: string): Promise<VibeItem | undefined> => {
   return undefined;
 };
 
-const fetchITunesBook = async (query: string): Promise<VibeItem | undefined> => {
+const fetchBook = async (query: string): Promise<VibeItem | undefined> => {
   try {
-    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=ebook&limit=1`);
+    // OpenLibrary Search API (CORS friendly)
+    const res = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=1`);
     if (!res.ok) return undefined;
     const data = await res.json();
-    const item = data.results[0];
-    if (item) {
-      const hiResCover = item.artworkUrl100
-        ? item.artworkUrl100.replace('100x100bb', '600x600bb')
+    const doc = data.docs?.[0];
+    
+    if (doc) {
+      // OpenLibrary Cover API
+      const coverUrl = doc.cover_i 
+        ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg`
         : '';
+        
       return {
         type: 'book',
-        title: item.trackName || query,
-        subtitle: item.artistName || 'Unknown Author',
-        coverUrl: hiResCover,
-        link: item.trackViewUrl,
+        title: doc.title || query,
+        subtitle: doc.author_name?.[0] || 'Unknown Author',
+        coverUrl,
+        link: doc.key ? `https://openlibrary.org${doc.key}` : undefined,
       };
     }
   } catch {
@@ -166,7 +170,7 @@ export const generateVibe = async (
   const [music, movie, book] = await Promise.all([
     fetchWithRetry(fetchMusic, seeds.music),
     fetchWithRetry(fetchMovie, seeds.movie),
-    fetchWithRetry(fetchITunesBook, seeds.book),
+    fetchWithRetry(fetchBook, seeds.book),
   ]);
 
   return { music, movie, book };
