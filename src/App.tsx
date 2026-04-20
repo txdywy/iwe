@@ -1,4 +1,4 @@
-import { useEffect, lazy, Suspense } from 'react';
+import { useEffect, lazy, Suspense, useState } from 'react';
 import { useStore } from './store/useStore';
 import { useShallow } from 'zustand/shallow';
 import { LoadingScreen } from './components/LoadingScreen';
@@ -36,32 +36,20 @@ function App() {
     setActiveLocation: s.setActiveLocation
   })));
 
+  const [showLoading, setShowLoading] = useState(true);
+
   useEffect(() => {
     initApp();
   }, [initApp]);
 
-  if (loading && !weatherData) {
-    return <LoadingScreen />;
-  }
+  useEffect(() => {
+    // If it takes longer than 1.5s, we drop the full-screen loader and prioritize the main UI with skeletons.
+    const timer = setTimeout(() => setShowLoading(false), 1500);
+    return () => clearTimeout(timer);
+  }, []);
 
-  if (error && !weatherData) {
-    return (
-      <div className="relative flex h-screen w-screen flex-col items-center justify-center bg-black text-white p-6">
-        <div className="absolute inset-0 -z-10 pointer-events-none opacity-50">
-          <Suspense fallback={null}>
-            <WeatherScene condition="Clear" />
-          </Suspense>
-        </div>
-        <h1 className="mb-4 text-3xl font-bold font-sans">Error</h1>
-        <p className="text-red-400 text-center max-w-md">{error}</p>
-        <button 
-          onClick={() => window.location.reload()}
-          className="mt-6 rounded-full px-6 py-2 bg-white/10 hover:bg-white/20 transition backdrop-blur border border-white/10"
-        >
-          Retry
-        </button>
-      </div>
-    );
+  if (loading && !weatherData && showLoading) {
+    return <LoadingScreen />;
   }
 
   const activeLoc = locations[activeLocationIndex];
@@ -72,7 +60,7 @@ function App() {
       {/* Weather Scene Fixed Background */}
       <div className="fixed inset-0 -z-10 pointer-events-none">
         <Suspense fallback={<div className="absolute inset-0 bg-gray-900" />}>
-          <WeatherScene condition={condition} />
+          <WeatherScene condition={condition} timezone={weatherData?.timezone} />
         </Suspense>
       </div>
 
@@ -80,19 +68,21 @@ function App() {
       <div className="relative z-10 flex flex-col items-center w-full px-4 py-8 md:py-16 gap-8 md:gap-12 pb-16">
         
         {/* Mobile-Only Location Pill Scroller (Top) */}
-        <div className="md:hidden w-full flex flex-col gap-2 mt-2">
-           <div className="overflow-x-auto no-scrollbar scroll-fade-x flex gap-2 py-1 px-1">
-              {locations.map((loc, idx) => (
-                <LocationButton
-                  key={loc.lat + '-' + loc.lon}
-                  city={loc.city || '...'}
-                  source={loc.source}
-                  isActive={idx === activeLocationIndex}
-                  onClick={() => setActiveLocation(idx)}
-                />
-              ))}
-           </div>
-        </div>
+        {locations.length > 0 && (
+          <div className="md:hidden w-full flex flex-col gap-2 mt-2">
+             <div className="overflow-x-auto no-scrollbar scroll-fade-x flex gap-2 py-1 px-1">
+                {locations.map((loc, idx) => (
+                  <LocationButton
+                    key={loc.lat + '-' + loc.lon}
+                    city={loc.city || '...'}
+                    source={loc.source}
+                    isActive={idx === activeLocationIndex}
+                    onClick={() => setActiveLocation(idx)}
+                  />
+                ))}
+             </div>
+          </div>
+        )}
 
         {/* Row 1: Weather Info & Secondary Controls */}
         <div className="flex flex-col lg:grid lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_450px] w-full max-w-[1400px] gap-8 lg:gap-12">
@@ -118,26 +108,31 @@ function App() {
                  </div>
                  <h1 
                     className="text-8xl md:text-[10rem] font-extralight tracking-normal text-white drop-shadow-2xl m-0 leading-none"
-                    aria-label={`${weatherData?.temperature.toFixed(0)} degrees`}
+                    aria-label={`${weatherData?.temperature?.toFixed(0) ?? '--'} degrees`}
                  >
-                   {weatherData?.temperature.toFixed(0)}°
+                   {weatherData?.temperature?.toFixed(0) ?? '--'}°
                  </h1>
               </div>
-              <h2 className="text-4xl md:text-5xl font-medium text-white/95 drop-shadow-md m-0 mt-4 tracking-tight">
-                {activeLoc?.city || 'Resolving...'}
+              <h2 className="text-4xl md:text-5xl font-medium text-white/95 drop-shadow-md m-0 mt-4 tracking-tight flex items-center gap-3">
+                {activeLoc?.city || (error ? 'Location Error' : 'Resolving...')}
+                {loading && <div className="w-5 h-5 border-2 border-white/50 border-t-white rounded-full animate-spin shrink-0" />}
               </h2>
+              
+              {error && !weatherData && (
+                <div className="mt-4 text-red-300 bg-red-900/40 px-4 py-2 rounded-xl text-sm border border-red-500/30 flex items-center gap-3 backdrop-blur-sm">
+                  <span>{error}</span>
+                  <button onClick={() => initApp()} className="bg-white/10 hover:bg-white/20 px-3 py-1 rounded-md transition-colors whitespace-nowrap">Retry</button>
+                </div>
+              )}
+
               <p className="text-xl md:text-2xl text-white/90 tracking-wide font-light mt-2 uppercase">
                 {condition} 
               </p>
               
               <div className="flex flex-wrap justify-center lg:justify-start gap-3 mt-6 md:mt-8 w-full">
-                {weatherData?.aqi !== undefined && (
-                  <MetricCard label="AQI" value={weatherData.aqi} />
-                )}
-                {weatherData?.uvIndex !== undefined && (
-                  <MetricCard label="UV" value={weatherData.uvIndex} />
-                )}
-                <MetricCard label="Rain" value={weatherData?.precipitationProb || 0} unit="%" />
+                <MetricCard label="AQI" value={weatherData?.aqi ?? '--'} />
+                <MetricCard label="UV" value={weatherData?.uvIndex ?? '--'} />
+                <MetricCard label="Rain" value={weatherData?.precipitationProb ?? '--'} unit="%" />
               </div>
             </motion.div>
           </AnimatePresence>
@@ -146,10 +141,14 @@ function App() {
           <div className="flex flex-col gap-6 w-full max-w-lg lg:max-w-none mx-auto lg:mx-0 shrink-0">
             {/* Desktop Location List */}
             <div className="hidden md:block rounded-[24px] border border-white/20 bg-white/10 p-6 backdrop-blur-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.4)]">
-              <h3 className="mb-4 text-micro font-bold tracking-super-wide text-white/60 text-left uppercase pl-2">
+              <h3 className="mb-4 text-micro font-bold tracking-super-wide text-white/60 text-left uppercase pl-2 flex items-center gap-2">
                 Discovery Nodes
+                {loading && <div className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
               </h3>
               <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto no-scrollbar scroll-fade-y pr-1">
+                {locations.length === 0 && !error && (
+                  <div className="text-white/40 text-sm p-2 italic animate-pulse">Scanning frequencies...</div>
+                )}
                 {locations.map((loc, idx) => (
                   <LocationButton
                     key={loc.lat + '-' + loc.lon}
@@ -163,7 +162,7 @@ function App() {
             </div>
             
             <Suspense fallback={<div className="h-64 rounded-[24px] bg-white/5 animate-pulse" />}>
-              <VibeWidget vibeData={vibeData} loading={vibeLoading} />
+              <VibeWidget vibeData={vibeData} loading={vibeLoading || (loading && !vibeData)} />
             </Suspense>
           </div>
         </div>

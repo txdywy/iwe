@@ -11,30 +11,43 @@ export interface GeoLocationResult {
   isp?: string[];
 }
 
-const reverseGeocode = async (lat: number, lon: number): Promise<string | undefined> => {
+const reverseGeocode = async (lat: number, lon: number, signal?: AbortSignal): Promise<string | undefined> => {
   try {
-    const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`);
+    const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`, { signal });
     if (res.ok) {
       const data = await res.json();
       return data.city || data.locality || data.principalSubdivision;
     }
   } catch (e) {
-    console.error('Reverse geocode failed', e);
+    if ((e as Error).name !== 'AbortError') {
+      console.error('Reverse geocode failed', e);
+    }
   }
   return undefined;
 };
 
-export const getGPSLocation = (): Promise<GeoLocationResult | null> => {
+export const getGPSLocation = (signal?: AbortSignal): Promise<GeoLocationResult | null> => {
   return new Promise((resolve) => {
     if (!navigator.geolocation) {
       resolve(null);
       return;
     }
+
+    let aborted = false;
+    if (signal) {
+      signal.addEventListener('abort', () => {
+        aborted = true;
+        resolve(null);
+      }, { once: true });
+    }
+
     navigator.geolocation.getCurrentPosition(
       async (position) => {
+        if (aborted) return;
         const lat = position.coords.latitude;
         const lon = position.coords.longitude;
-        const city = await reverseGeocode(lat, lon) || 'GPS Location';
+        const city = await reverseGeocode(lat, lon, signal) || 'GPS Location';
+        if (aborted) return;
         resolve({ source: 'gps', lat, lon, city, confidence: 100 });
       },
       () => resolve(null),
@@ -43,12 +56,10 @@ export const getGPSLocation = (): Promise<GeoLocationResult | null> => {
   });
 };
 
-export const getIPLocation = async (ip?: string, source: 'ip'|'webrtc' = 'ip'): Promise<GeoLocationResult | null> => {
+export const getIPLocation = async (ip?: string, source: 'ip'|'webrtc' = 'ip', signal?: AbortSignal): Promise<GeoLocationResult | null> => {
   try {
-    // ipapi.co/json/ returns the requester's IP info if no IP is provided.
-    // This saves 1-2 pre-fetch calls to ipify.
     const url = ip ? `https://ipapi.co/${ip}/json/` : 'https://ipapi.co/json/';
-    const res = await fetch(url);
+    const res = await fetch(url, { signal });
     if (!res.ok) return null;
     const data = await res.json();
     if (data.error) return null;
@@ -70,28 +81,25 @@ export const getIPLocation = async (ip?: string, source: 'ip'|'webrtc' = 'ip'): 
   }
 };
 
-export const getDomesticIPLocation = async (): Promise<GeoLocationResult | null> => {
+export const getDomesticIPLocation = async (signal?: AbortSignal): Promise<GeoLocationResult | null> => {
   try {
-    // ipip.net is a massive domestic router standard, almost universally hit via DIRECT proxy rules.
-    const res = await fetch('https://myip.ipip.net/json');
+    const res = await fetch('https://myip.ipip.net/json', { signal });
     if (!res.ok) return null;
     const data = await res.json();
     if (data.ret !== 'ok') return null;
     
-    // Convert Chinese Province/City to a generic string (e.g. "China, Beijing")
     const p = data.data.location[1];
     const c = data.data.location[2];
     const city = p === c ? p : `${p} ${c}`;
     const isp = data.data.location[4] || 'Domestic Node';
     
-    // Low confidence for domestic IP because lat/lon is just a central point estimate.
     return {
       source: 'ip (domestic)',
       lat: 35.8617,
-      lon: 104.1954, // central China roughly
+      lon: 104.1954,
       city: city || 'Domestic',
       country: 'China',
-      confidence: 30, // Lowered from 79
+      confidence: 30,
       ip: [data.data.ip],
       isp: [isp]
     };
@@ -112,13 +120,28 @@ const isPrivateIP = (ip: string): boolean => {
   return false;
 };
 
-export const getWebRTCLocation = (): Promise<GeoLocationResult | null> => {
+export const getWebRTCLocation = (signal?: AbortSignal): Promise<GeoLocationResult | null> => {
   return new Promise((resolve) => {
     try {
       const peer = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+      
+      let aborted = false;
+      if (signal) {
+        signal.addEventListener('abort', () => {
+          aborted = true;
+          peer.close();
+          resolve(null);
+        }, { once: true });
+      }
+
       peer.createDataChannel('');
-      peer.createOffer().then(offer => peer.setLocalDescription(offer)).catch(() => resolve(null));
+      peer.createOffer().then(offer => {
+        if (aborted) return;
+        return peer.setLocalDescription(offer);
+      }).catch(() => resolve(null));
+
       peer.onicecandidate = async (event) => {
+        if (aborted) return;
         if (!event || !event.candidate) return;
         const candidate = event.candidate.candidate;
         // Extract IP
@@ -132,7 +155,7 @@ export const getWebRTCLocation = (): Promise<GeoLocationResult | null> => {
             // Unlikely to geocode local IPs via ipapi.co
             resolve({ source: 'webrtc (local)', lat: 0, lon: 0, city: 'Local Network', confidence: 10, ip: [ip], isp: ['LAN'] });
           } else {
-            const loc = await getIPLocation(ip, 'webrtc');
+            const loc = await getIPLocation(ip, 'webrtc', signal);
             resolve(loc);
           }
         }
@@ -187,25 +210,25 @@ export const getTimezoneLocation = (): GeoLocationResult | null => {
   return null;
 };
 
-export const getBestLocations = async (onProgress?: (msg: string) => void): Promise<GeoLocationResult[]> => {
+export const getBestLocations = async (onProgress?: (msg: string) => void, signal?: AbortSignal): Promise<GeoLocationResult[]> => {
   const locations: GeoLocationResult[] = [];
   if (onProgress) onProgress("Initializing multi-layer geographic probes...");
 
   // Parallelize fetch where possible without hanging indefinitely
   const [gps, ip, webrtc, homeIp] = await Promise.all([
-    getGPSLocation().then(res => {
+    getGPSLocation(signal).then(res => {
       if (res && onProgress) onProgress(`[GPS] Satellite lock: ${res.city || 'Coordinates acquired'}`);
       return res;
     }),
-    getIPLocation().then(res => {
+    getIPLocation(undefined, 'ip', signal).then(res => {
       if (res && onProgress) onProgress(`[IP-WAN] Proxy node traced: ${res.city || 'Unknown'}`);
       return res;
     }),
-    getWebRTCLocation().then(res => {
+    getWebRTCLocation(signal).then(res => {
       if (res && onProgress) onProgress(`[STUN] WebRTC proxy bypassed: ${res.city || 'Unknown'}`);
       return res;
     }),
-    getDomesticIPLocation().then(res => {
+    getDomesticIPLocation(signal).then(res => {
       if (res && onProgress) onProgress(`[IP-LAN] Domestic direct route: ${res.city || 'Unknown'}`);
       return res;
     }),

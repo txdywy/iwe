@@ -98,9 +98,9 @@ export const VibeWidget = memo(({ vibeData, loading }: VibeWidgetProps) => {
           {currentItem ? (
             <motion.div
               key={activeTab}
-              initial={{ opacity: 0, scale: 0.95, filter: 'blur(4px)' }}
-              animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-              exit={{ opacity: 0, scale: 1.05, filter: 'blur(4px)' }}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 1.05 }}
               transition={{ duration: 0.3 }}
               className="flex items-center gap-4"
             >
@@ -118,7 +118,7 @@ export const VibeWidget = memo(({ vibeData, loading }: VibeWidgetProps) => {
                 )}
                 {/* Play/View Overlay */}
                 {currentItem.link && (
-                  <a href={currentItem.link} target="_blank" rel="noopener noreferrer" className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm">
+                  <a href={currentItem.link} target="_blank" rel="noopener noreferrer" className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity backdrop-blur-sm">
                     <span className="text-[10px] uppercase font-bold text-white tracking-widest bg-white/20 px-3 py-1 rounded-full">{activeTab === 'book' ? 'Read' : 'Play'}</span>
                   </a>
                 )}

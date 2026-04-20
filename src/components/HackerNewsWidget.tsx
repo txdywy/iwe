@@ -8,7 +8,7 @@ interface HNStory {
   score: number;
   by: string;
   time: number;
-  descendants: number; // comment count
+  descendants?: number; // comment count
 }
 
 export const HackerNewsWidget = memo(() => {

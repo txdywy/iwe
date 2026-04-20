@@ -1,7 +1,6 @@
 import { useState, memo } from 'react';
 import { motion } from 'framer-motion';
-
-const chiikawaRepoUrl = "https://raw.githubusercontent.com/txdywy/iwe/main/src/assets/chiikawa.png";
+import kuliImage from '../assets/kuli.jpg';
 
 export const ChiikawaMascot = memo(() => {
   const [randomDuration] = useState(() => 3 + Math.random());
@@ -24,8 +23,8 @@ export const ChiikawaMascot = memo(() => {
       }}
     >
       <img 
-        src={chiikawaRepoUrl} 
-        alt="Chiikawa Character" 
+        src={kuliImage} 
+        alt="Kuli Character" 
         className="w-full h-full object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]"
       />
     </motion.div>

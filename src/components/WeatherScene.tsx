@@ -5,6 +5,7 @@ import { PointLight, MathUtils, ShaderMaterial } from 'three';
 
 interface WeatherSceneProps {
   condition: 'Clear' | 'Clouds' | 'Rain' | 'Snow' | 'Thunderstorm';
+  timezone?: string;
 }
 
 const Rain = () => {
@@ -157,7 +158,7 @@ const Lightning = () => {
   return <pointLight ref={lightRef} color="#e0e7ff" position={[0, 100, 0]} distance={500} decay={2} />;
 };
 
-export const WeatherScene = memo(({ condition }: WeatherSceneProps) => {
+export const WeatherScene = memo(({ condition, timezone }: WeatherSceneProps) => {
   // Map weather to background colors and effects
   const isRain = condition === 'Rain' || condition === 'Thunderstorm';
   const isSnow = condition === 'Snow';
@@ -171,8 +172,23 @@ export const WeatherScene = memo(({ condition }: WeatherSceneProps) => {
                   condition === 'Snow' ? '#78909C' : // Slate gray-blue
                   '#4a5568';
 
-  const hour = new Date().getHours();
-  const isNight = hour < 6 || hour > 18;
+  const [isNight] = useState(() => {
+    try {
+      const options: Intl.DateTimeFormatOptions = {
+        timeZone: timezone || undefined,
+        hour: 'numeric',
+        hour12: false
+      };
+      const formatter = new Intl.DateTimeFormat('en-US', options);
+      const parts = formatter.formatToParts(new Date());
+      const hourPart = parts.find(p => p.type === 'hour');
+      const hour = hourPart ? parseInt(hourPart.value, 10) : new Date().getHours();
+      return hour < 6 || hour > 18;
+    } catch {
+      const hour = new Date().getHours();
+      return hour < 6 || hour > 18;
+    }
+  });
 
   return (
     <div className="absolute inset-0 -z-10 bg-gradient-to-b from-gray-900 to-black transition-colors duration-1000">

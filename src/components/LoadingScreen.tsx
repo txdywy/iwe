@@ -25,7 +25,7 @@ export const LoadingScreen = () => {
       <motion.div 
         animate={{ scale: [1, 1.3, 1], opacity: [0.1, 0.2, 0.1] }}
         transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-        className="absolute w-[500px] h-[500px] bg-white blur-[120px] rounded-full pointer-events-none"
+        className="absolute w-[500px] h-[500px] bg-white blur-[60px] rounded-full pointer-events-none"
       />
 
       <div className="absolute inset-0 opacity-20 pointer-events-none flex flex-col justify-end pb-20 items-center overflow-hidden mix-blend-screen">

@@ -55,7 +55,7 @@ export const useStore = create<AppState>((set, get) => ({
     });
 
     try {
-      const locations = await getBestLocations(log);
+      const locations = await getBestLocations(log, signal);
       
       if (get().lastRequestId !== requestId || signal.aborted) return;
 

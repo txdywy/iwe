@@ -16,6 +16,7 @@ export interface WeatherData {
   uvIndex?: number;
   forecast?: DailyForecast[];
   sourceUsed: string;
+  timezone?: string;
 }
 
 const mapWeatherCode = (code: number): WeatherData['condition'] => {
@@ -23,7 +24,7 @@ const mapWeatherCode = (code: number): WeatherData['condition'] => {
   if (code >= 1 && code <= 3) return 'Clouds';
   if (code >= 45 && code <= 48) return 'Clouds'; // Fog
   if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return 'Rain';
-  if (code >= 71 && code <= 77 || code === 85 || code === 86) return 'Snow';
+  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return 'Snow';
   if (code >= 95) return 'Thunderstorm';
   return 'Clear';
 }
@@ -67,6 +68,7 @@ const fetchOpenMeteo = async (lat: number, lon: number, signal?: AbortSignal): P
       uvIndex: data.daily?.uv_index_max?.[0], // Today's max UV
       forecast: forecastList,
       sourceUsed: 'Open-Meteo',
+      timezone: data.timezone,
     };
   } catch (e) {
     console.error('Open-Meteo failed', e);

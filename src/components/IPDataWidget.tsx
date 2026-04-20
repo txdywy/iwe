@@ -24,9 +24,9 @@ export const IPDataWidget = memo(() => {
       
       {/* Content Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-        {ipLocations.map((loc, i) => (
+        {ipLocations.map((loc) => (
           <div
-            key={i}
+            key={loc.lat + '-' + loc.lon + '-' + loc.source}
             className="flex flex-col gap-2 p-4 rounded-2xl bg-white/5 border border-white/5 transition-all duration-300 hover:bg-white/10 hover:border-white/10"
           >
             <div className="flex justify-between items-start gap-2">
