@@ -78,7 +78,7 @@ function App() {
               </p>
               
               {/* Extra Metrics panel */}
-              <div className="flex gap-4 mt-6">
+              <div className="flex w-full overflow-x-auto no-scrollbar gap-3 mt-4 md:mt-6 pb-2 snap-x justify-center md:justify-start max-w-[100vw] px-1 mask-linear-fade">
                 {weatherData?.aqi !== undefined && (
                   <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl px-4 py-3 flex flex-col items-center justify-center min-w-[100px] shadow-lg">
                     <span className="text-[10px] uppercase font-bold tracking-widest text-white/50 mb-1">AQI EU</span>
@@ -150,7 +150,7 @@ function App() {
         </div>
 
         {/* Mobile View: Bottom Sheet with everything combined */}
-        <div className="md:hidden flex flex-col w-full max-h-[55vh] mt-auto pointer-events-auto z-20 shrink gap-4 overflow-y-auto no-scrollbar pb-2 pt-2 mix-blend-normal">
+        <div className="md:hidden flex flex-col w-full max-h-[50vh] mt-auto pointer-events-auto z-20 shrink gap-4 overflow-y-auto no-scrollbar pb-6 pt-2 mix-blend-normal">
           
           {/* Mobile Forecast */}
           {weatherData?.forecast && weatherData.forecast.length > 0 && (

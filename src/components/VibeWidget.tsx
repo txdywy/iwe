@@ -85,7 +85,12 @@ export const VibeWidget: React.FC<VibeWidgetProps> = ({ vibeData, loading }) => 
                 {currentItem.coverUrl ? (
                   <ShimmerImage src={currentItem.coverUrl} alt={currentItem.title} />
                 ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center bg-white/5 border border-white/10 text-white/20 text-xs">Waiting</div>
+                  <div className="w-full h-full flex flex-col items-center justify-center bg-white/5 border border-white/10 text-white/50 text-[10px] uppercase font-bold tracking-widest text-center shadow-inner gap-2 pt-2">
+                    <motion.div animate={{ rotate: [0, 10, -10, 0] }} transition={{ repeat: Infinity, duration: 1.5, ease: 'easeInOut' }}>
+                      🐇
+                    </motion.div>
+                    Oops
+                  </div>
                 )}
                 {/* Play/View Overlay */}
                 {currentItem.link && (
@@ -109,8 +114,14 @@ export const VibeWidget: React.FC<VibeWidgetProps> = ({ vibeData, loading }) => 
               </div>
             </motion.div>
           ) : (
-            <motion.div key="empty" className="absolute inset-0 flex items-center justify-center text-white/30 text-xs">
-               Not Found
+            <motion.div key="empty" className="absolute inset-0 flex flex-col items-center justify-center text-white/40 text-[10px] uppercase font-bold tracking-widest gap-2">
+               <motion.div animate={{ rotate: [0, -10, 10, 0] }} transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }} className="text-xl">
+                 📡
+               </motion.div>
+               <motion.span animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 1.5, repeat: Infinity }}>
+                 Scanning database...
+               </motion.span>
+               <span className="text-[8px] opacity-50 mt-1">Retry triggered</span>
             </motion.div>
           )}
         </AnimatePresence>

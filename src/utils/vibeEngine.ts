@@ -93,10 +93,25 @@ const fetchITunesBook = async (query: string): Promise<VibeItem | undefined> => 
 export const generateVibe = async (condition: 'Clear' | 'Clouds' | 'Rain' | 'Snow' | 'Thunderstorm'): Promise<VibeRecommendation> => {
   const seeds = seedLibrary[condition] || seedLibrary.Clear;
   
+  // Custom retry wrapper that tests different random seeds up to 3 times
+  const fetchWithRetry = async (
+    fetcher: (q: string) => Promise<VibeItem | undefined>,
+    seedArray: string[],
+    retries = 3
+  ): Promise<VibeItem | undefined> => {
+    let result: VibeItem | undefined;
+    for (let i = 0; i < retries; i++) {
+        const query = pickRandom(seedArray);
+        result = await fetcher(query);
+        if (result) return result;
+    }
+    return undefined;
+  };
+
   const [music, movie, book] = await Promise.all([
-    fetchITunes(pickRandom(seeds.music), 'music'),
-    fetchITunes(pickRandom(seeds.movie), 'movie'),
-    fetchITunesBook(pickRandom(seeds.book)),
+    fetchWithRetry((q) => fetchITunes(q, 'music'), seeds.music),
+    fetchWithRetry((q) => fetchITunes(q, 'movie'), seeds.movie),
+    fetchWithRetry((q) => fetchITunesBook(q), seeds.book)
   ]);
 
   return {
