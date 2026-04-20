@@ -2,6 +2,33 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { VibeRecommendation } from '../utils/vibeEngine';
 
+const ShimmerImage = ({ src, alt }: { src: string; alt: string }) => {
+  const [loaded, setLoaded] = useState(false);
+  return (
+    <div className="relative w-full h-full overflow-hidden bg-white/5 rounded-xl border border-white/10 flex items-center justify-center">
+      {/* Shimmer Effect */}
+      {!loaded && (
+        <motion.div
+          animate={{ x: ['-200%', '200%'] }}
+          transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
+          className="absolute inset-0 w-1/2 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12"
+        />
+      )}
+      {src && (
+        <img 
+          src={src} 
+          alt={alt} 
+          onLoad={() => setLoaded(true)}
+          className={`w-full h-full object-cover transition-opacity duration-700 ${loaded ? 'opacity-100' : 'opacity-0'}`} 
+        />
+      )}
+      {!src && !loaded && (
+        <motion.div animate={{ opacity: [0.3, 0.6, 0.3] }} transition={{ repeat: Infinity, duration: 2 }} className="w-6 h-6 border-[2px] border-white/20 border-t-white/60 rounded-full animate-spin" />
+      )}
+    </div>
+  );
+};
+
 interface VibeWidgetProps {
   vibeData: VibeRecommendation | null;
   loading: boolean;
@@ -56,9 +83,9 @@ export const VibeWidget: React.FC<VibeWidgetProps> = ({ vibeData, loading }) => 
               {/* Cover Art */}
               <div className="shrink-0 w-24 h-24 rounded-xl overflow-hidden shadow-xl bg-black relative">
                 {currentItem.coverUrl ? (
-                  <img src={currentItem.coverUrl} alt={currentItem.title} className="w-full h-full object-cover" />
+                  <ShimmerImage src={currentItem.coverUrl} alt={currentItem.title} />
                 ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center bg-white/5 text-white/20 text-xs">No Cover</div>
+                  <div className="w-full h-full flex flex-col items-center justify-center bg-white/5 border border-white/10 text-white/20 text-xs">Waiting</div>
                 )}
                 {/* Play/View Overlay */}
                 {currentItem.link && (

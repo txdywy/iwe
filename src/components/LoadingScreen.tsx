@@ -27,6 +27,47 @@ export const LoadingScreen = () => {
         transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
         className="absolute w-[500px] h-[500px] bg-white blur-[120px] rounded-full pointer-events-none"
       />
+
+      {/* Abstract Atmospheric Data Visualizations */}
+      <div className="absolute inset-0 opacity-20 pointer-events-none flex flex-col justify-end pb-20 items-center overflow-hidden mix-blend-screen">
+        <svg viewBox="0 0 1000 200" className="w-[150vw] h-48 opacity-40">
+          <motion.path
+            d="M 0 100 Q 250 100, 500 100 T 1000 100"
+            fill="transparent"
+            stroke="white"
+            strokeWidth="1"
+            animate={{
+              d: [
+                "M 0 100 Q 250 50, 500 100 T 1000 100",
+                "M 0 100 Q 250 150, 500 100 T 1000 100",
+                "M 0 100 Q 250 50, 500 100 T 1000 100"
+              ]
+            }}
+            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <motion.path
+            d="M 0 100 Q 250 100, 500 100 T 1000 100"
+            fill="transparent"
+            stroke="rgba(255,255,255,0.4)"
+            strokeWidth="2"
+            animate={{
+              d: [
+                "M 0 100 Q 250 180, 500 100 T 1000 100",
+                "M 0 100 Q 250 20, 500 100 T 1000 100",
+                "M 0 100 Q 250 180, 500 100 T 1000 100"
+              ]
+            }}
+            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+          />
+        </svg>
+      </div>
+
+      {/* Vertical Global Scan Line */}
+      <motion.div
+        animate={{ y: ['-100vh', '100vh'] }}
+        transition={{ duration: 2.5, repeat: Infinity, ease: 'linear' }}
+        className="absolute top-0 w-full h-1 bg-white/30 shadow-[0_0_20px_white] z-0 blur-[2px]"
+      />
       
       <div className="z-10 flex flex-col items-center gap-10">
         <div className="relative flex items-center justify-center">
@@ -65,7 +106,7 @@ export const LoadingScreen = () => {
                     exit={{ opacity: 0, scale: 0.8, y: -20 }}
                     className={`text-[10px] sm:text-xs font-mono tracking-wider break-words ${isLast ? 'text-white font-bold drop-shadow-md' : 'text-white/60'}`}
                   >
-                    <span className="text-blue-400 mr-2">{'>'}</span> {log}
+                    <span className={`mr-2 ${isLast ? 'text-blue-400 animate-pulse' : 'text-white/40'}`}>{'>'}</span> {log}
                   </motion.div>
                 );
               })}
