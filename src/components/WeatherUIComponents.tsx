@@ -2,7 +2,7 @@ import { memo } from 'react';
 
 export const MetricCard = memo(({ label, value, unit }: { label: string; value: string | number; unit?: string }) => (
   <div className="bg-black/30 md:bg-white/10 backdrop-blur-xl border border-white/10 md:border-white/20 rounded-2xl px-4 py-3 flex flex-col items-center justify-center min-w-[100px] shadow-lg">
-    <span className="text-micro uppercase font-bold tracking-super-wide text-white/60 mb-1">{label}</span>
+    <span className="text-micro uppercase font-bold tracking-super-wide text-white/70 mb-1">{label}</span>
     <span className="text-xl font-medium text-white">{value}{unit}</span>
   </div>
 ));
@@ -33,7 +33,7 @@ export const ForecastCard = memo(({
       role="option"
       aria-selected={isActive}
     >
-      <span className="text-white/60 text-tiny font-medium whitespace-nowrap">{formatDate(time)}</span>
+      <span className="text-white/70 text-tiny font-medium whitespace-nowrap">{formatDate(time)}</span>
       <span className="text-3xl md:text-4xl filter drop-shadow-md">{emoji}</span>
       <div className="flex gap-2 text-white">
         <span className="font-semibold text-sm md:text-base">{maxTemp.toFixed(0)}°</span>

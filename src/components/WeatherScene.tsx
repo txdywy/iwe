@@ -1,7 +1,28 @@
-import { useRef, memo, useState } from 'react';
+import { useRef, memo, useState, useMemo, useEffect, Component } from 'react';
+import type { ReactNode, ErrorInfo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Stars, Cloud, Sky } from '@react-three/drei';
 import { PointLight, MathUtils, ShaderMaterial } from 'three';
+
+// ── Error Boundary for WebGL crashes ──
+interface ErrorBoundaryState { hasError: boolean }
+
+class WeatherSceneErrorBoundary extends Component<{ children: ReactNode; bgColor: string }, ErrorBoundaryState> {
+  state: ErrorBoundaryState = { hasError: false };
+  static getDerivedStateFromError(): ErrorBoundaryState { return { hasError: true }; }
+  componentDidCatch(error: Error, info: ErrorInfo) { console.error('WeatherScene crashed:', error, info); }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div
+          className="absolute inset-0 -z-10 transition-colors duration-1000"
+          style={{ background: `linear-gradient(to bottom, ${this.props.bgColor}, #000)` }}
+        />
+      );
+    }
+    return this.props.children;
+  }
+}
 
 interface WeatherSceneProps {
   condition: 'Clear' | 'Clouds' | 'Rain' | 'Snow' | 'Thunderstorm';
@@ -12,7 +33,6 @@ const Rain = () => {
   const rainCount = 5000;
   const matRef = useRef<ShaderMaterial>(null);
 
-  // useState lazy initializer is the idiomatic way to generate stable random data once.
   const [data] = useState(() => {
     const pos = new Float32Array(rainCount * 3);
     const vel = new Float32Array(rainCount);
@@ -28,9 +48,7 @@ const Rain = () => {
   const { positions, velocities } = data;
 
   useFrame(({ clock }) => {
-    if (matRef.current) {
-      matRef.current.uniforms.uTime.value = clock.getElapsedTime();
-    }
+    if (matRef.current) matRef.current.uniforms.uTime.value = clock.getElapsedTime();
   });
 
   return (
@@ -42,15 +60,9 @@ const Rain = () => {
       <shaderMaterial
         ref={matRef}
         transparent
-        uniforms={{
-          uTime: { value: 0 },
-          uColor: { value: [0.6, 0.6, 0.6] },
-          uSize: { value: 0.5 }
-        }}
+        uniforms={{ uTime: { value: 0 }, uColor: { value: [0.6, 0.6, 0.6] }, uSize: { value: 0.5 } }}
         vertexShader={`
-          uniform float uTime;
-          uniform float uSize;
-          attribute float velocity;
+          uniform float uTime; uniform float uSize; attribute float velocity;
           void main() {
             vec3 pos = position;
             pos.y = mod(pos.y - uTime * velocity * 150.0 + 200.0, 400.0) - 200.0;
@@ -71,7 +83,7 @@ const Rain = () => {
   );
 };
 
-const Snow = () => {
+const SnowEffect = () => {
   const snowCount = 2000;
   const matRef = useRef<ShaderMaterial>(null);
 
@@ -92,9 +104,7 @@ const Snow = () => {
   const { positions, speeds, phases } = data;
 
   useFrame(({ clock }) => {
-    if (matRef.current) {
-      matRef.current.uniforms.uTime.value = clock.getElapsedTime();
-    }
+    if (matRef.current) matRef.current.uniforms.uTime.value = clock.getElapsedTime();
   });
 
   return (
@@ -107,16 +117,9 @@ const Snow = () => {
       <shaderMaterial
         ref={matRef}
         transparent
-        uniforms={{
-          uTime: { value: 0 },
-          uColor: { value: [1.0, 1.0, 1.0] },
-          uSize: { value: 1.2 }
-        }}
+        uniforms={{ uTime: { value: 0 }, uColor: { value: [1.0, 1.0, 1.0] }, uSize: { value: 1.2 } }}
         vertexShader={`
-          uniform float uTime;
-          uniform float uSize;
-          attribute float speed;
-          attribute float phase;
+          uniform float uTime; uniform float uSize; attribute float speed; attribute float phase;
           void main() {
             vec3 pos = position;
             pos.y = mod(pos.y - uTime * speed * 50.0 + 200.0, 400.0) - 200.0;
@@ -142,11 +145,10 @@ const Snow = () => {
 
 const Lightning = () => {
   const lightRef = useRef<PointLight>(null);
-  
+
   useFrame(({ clock }) => {
     if (!lightRef.current) return;
     const time = clock.getElapsedTime() * 10;
-    // Simulate sporadic lightning flashes using noise-like math
     if (Math.random() > 0.98) {
       const flash = Math.sin(time) * Math.cos(time * 2.3) * Math.sin(time * 3.1);
       lightRef.current.intensity = flash > 0.5 ? flash * 500 : 0;
@@ -158,65 +160,75 @@ const Lightning = () => {
   return <pointLight ref={lightRef} color="#e0e7ff" position={[0, 100, 0]} distance={500} decay={2} />;
 };
 
+/** Compute whether it's night at the given timezone. */
+const computeIsNight = (timezone?: string): boolean => {
+  try {
+    const options: Intl.DateTimeFormatOptions = {
+      timeZone: timezone || undefined,
+      hour: 'numeric',
+      hour12: false,
+    };
+    const parts = new Intl.DateTimeFormat('en-US', options).formatToParts(new Date());
+    const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '', 10);
+    return isNaN(hour) ? false : hour < 6 || hour > 18;
+  } catch {
+    const hour = new Date().getHours();
+    return hour < 6 || hour > 18;
+  }
+};
+
 export const WeatherScene = memo(({ condition, timezone }: WeatherSceneProps) => {
-  // Map weather to background colors and effects
   const isRain = condition === 'Rain' || condition === 'Thunderstorm';
   const isSnow = condition === 'Snow';
   const isCloudy = condition === 'Clouds' || isRain || isSnow;
   const isStorm = condition === 'Thunderstorm';
-  
-  // Use slightly darker, more saturated base colors so white text remains legible
-  const bgColor = condition === 'Clear' ? '#4A90E2' : // Darker sky blue
-                  condition === 'Clouds' ? '#5A6B7C' : 
-                  condition === 'Thunderstorm' ? '#0F172A' : 
-                  condition === 'Snow' ? '#78909C' : // Slate gray-blue
-                  '#4a5568';
 
-  const [isNight] = useState(() => {
-    try {
-      const options: Intl.DateTimeFormatOptions = {
-        timeZone: timezone || undefined,
-        hour: 'numeric',
-        hour12: false
-      };
-      const formatter = new Intl.DateTimeFormat('en-US', options);
-      const parts = formatter.formatToParts(new Date());
-      const hourPart = parts.find(p => p.type === 'hour');
-      const hour = hourPart ? parseInt(hourPart.value, 10) : new Date().getHours();
-      return hour < 6 || hour > 18;
-    } catch {
-      const hour = new Date().getHours();
-      return hour < 6 || hour > 18;
-    }
-  });
+  const bgColor = condition === 'Clear' ? '#4A90E2'
+    : condition === 'Clouds' ? '#5A6B7C'
+    : condition === 'Thunderstorm' ? '#0F172A'
+    : condition === 'Snow' ? '#78909C'
+    : '#4a5568';
+
+  // Recompute day/night when condition or timezone changes, and refresh every 10 min
+  const [isNight, setIsNight] = useState(() => computeIsNight(timezone));
+
+  useMemo(() => {
+    setIsNight(computeIsNight(timezone));
+  }, [timezone, condition]);
+
+  useEffect(() => {
+    const interval = setInterval(() => setIsNight(computeIsNight(timezone)), 10 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [timezone]);
 
   return (
-    <div className="absolute inset-0 -z-10 bg-gradient-to-b from-gray-900 to-black transition-colors duration-1000">
-      <Canvas camera={{ position: [0, 0, 100], fov: 60 }} dpr={[1, 1]}>
-        {/* Fog logic - Mist makes it much denser */}
-        <fog attach="fog" args={[bgColor, 50, condition === 'Snow' ? 150 : 300]} />
-        <ambientLight intensity={condition === 'Clear' ? 0.8 : isStorm ? 0.1 : 0.4} />
-        <directionalLight position={[10, 100, 10]} intensity={isStorm ? 0.2 : 0.8} />
-        
-        {condition === 'Clear' && !isNight && <Sky sunPosition={[100, 20, 100]} />}
-        {condition === 'Clear' && isNight && <Stars radius={100} depth={50} count={3000} factor={4} saturation={0} fade speed={1} />}
-        
-        {isCloudy && (
-          <group position={[0, 40, -50]}>
-            <Cloud opacity={isStorm ? 0.8 : 0.4} speed={isStorm ? 0.8 : 0.4} color={isStorm ? '#333333' : '#ffffff'} scale={5} segments={5} />
-            <Cloud position={[50, -20, -50]} opacity={isStorm ? 0.9 : 0.4} speed={0.2} color={isStorm ? '#222222' : '#ffffff'} scale={7} segments={5} />
-            <Cloud position={[-50, 10, -30]} opacity={isStorm ? 0.7 : 0.4} speed={0.3} color={isStorm ? '#444444' : '#ffffff'} scale={6} segments={5} />
-          </group>
-        )}
-        
-        {isRain && <Rain />}
-        {isSnow && <Snow />}
-        {isStorm && <Lightning />}
-        
-        <color attach="background" args={[bgColor]} />
-      </Canvas>
-      {/* Fallback scrim to guarantee minimum text contrast on bright days */}
-      <div className="absolute inset-0 bg-black/20 pointer-events-none" />
-    </div>
+    <WeatherSceneErrorBoundary bgColor={bgColor}>
+      <div className="absolute inset-0 -z-10 bg-gradient-to-b from-gray-900 to-black transition-colors duration-1000">
+        <Canvas camera={{ position: [0, 0, 100], fov: 60 }} dpr={[1, 1]}>
+          <fog attach="fog" args={[bgColor, 50, condition === 'Snow' ? 150 : 300]} />
+          <ambientLight intensity={condition === 'Clear' ? 0.8 : isStorm ? 0.1 : 0.4} />
+          <directionalLight position={[10, 100, 10]} intensity={isStorm ? 0.2 : 0.8} />
+
+          {condition === 'Clear' && !isNight && <Sky sunPosition={[100, 20, 100]} />}
+          {condition === 'Clear' && isNight && <Stars radius={100} depth={50} count={3000} factor={4} saturation={0} fade speed={1} />}
+
+          {isCloudy && (
+            <group position={[0, 40, -50]}>
+              <Cloud opacity={isStorm ? 0.8 : 0.4} speed={isStorm ? 0.8 : 0.4} color={isStorm ? '#333333' : '#ffffff'} scale={5} segments={5} />
+              <Cloud position={[50, -20, -50]} opacity={isStorm ? 0.9 : 0.4} speed={0.2} color={isStorm ? '#222222' : '#ffffff'} scale={7} segments={5} />
+              <Cloud position={[-50, 10, -30]} opacity={isStorm ? 0.7 : 0.4} speed={0.3} color={isStorm ? '#444444' : '#ffffff'} scale={6} segments={5} />
+            </group>
+          )}
+
+          {isRain && <Rain />}
+          {isSnow && <SnowEffect />}
+          {isStorm && <Lightning />}
+
+          <color attach="background" args={[bgColor]} />
+        </Canvas>
+        {/* Scrim for text contrast */}
+        <div className="absolute inset-0 bg-black/20 pointer-events-none" />
+      </div>
+    </WeatherSceneErrorBoundary>
   );
 });

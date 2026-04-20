@@ -70,16 +70,21 @@ function App() {
         {/* Mobile-Only Location Pill Scroller (Top) */}
         {locations.length > 0 && (
           <div className="md:hidden w-full flex flex-col gap-2 mt-2">
-             <div className="overflow-x-auto no-scrollbar scroll-fade-x flex gap-2 py-1 px-1">
-                {locations.map((loc, idx) => (
-                  <LocationButton
-                    key={loc.lat + '-' + loc.lon}
-                    city={loc.city || '...'}
-                    source={loc.source}
-                    isActive={idx === activeLocationIndex}
-                    onClick={() => setActiveLocation(idx)}
-                  />
-                ))}
+             <div className="flex items-center justify-between">
+               <div className="overflow-x-auto no-scrollbar scroll-fade-x flex gap-2 py-1 px-1 flex-1 pr-2">
+                  {locations.map((loc, idx) => (
+                    <LocationButton
+                      key={loc.lat + '-' + loc.lon}
+                      city={loc.city || '...'}
+                      source={loc.source}
+                      isActive={idx === activeLocationIndex}
+                      onClick={() => setActiveLocation(idx)}
+                    />
+                  ))}
+               </div>
+               <div className="shrink-0 ml-2">
+                 <ChiikawaMascot />
+               </div>
              </div>
           </div>
         )}
@@ -87,11 +92,6 @@ function App() {
         {/* Row 1: Weather Info & Secondary Controls */}
         <div className="flex flex-col lg:grid lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_450px] w-full max-w-[1400px] gap-8 lg:gap-12">
           
-          {/* Mobile Mascot (Top Right Absolute) */}
-          <div className="md:hidden absolute top-4 right-4 z-50">
-             <ChiikawaMascot />
-          </div>
-
           {/* Left Panel: Hero Temperature */}
           <AnimatePresence mode="popLayout">
             <motion.div 
@@ -141,7 +141,7 @@ function App() {
           <div className="flex flex-col gap-6 w-full max-w-lg lg:max-w-none mx-auto lg:mx-0 shrink-0">
             {/* Desktop Location List */}
             <div className="hidden md:block rounded-[24px] border border-white/20 bg-white/10 p-6 backdrop-blur-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.4)]">
-              <h3 className="mb-4 text-micro font-bold tracking-super-wide text-white/60 text-left uppercase pl-2 flex items-center gap-2">
+              <h3 className="mb-4 text-micro font-bold tracking-super-wide text-white/70 text-left uppercase pl-2 flex items-center gap-2">
                 Discovery Nodes
                 {loading && <div className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
               </h3>
@@ -171,7 +171,7 @@ function App() {
         {weatherData?.forecast && weatherData.forecast.length > 0 && (
           <div className="w-full max-w-[1400px]">
              <div className="flex items-center gap-4 mb-4 px-2">
-                <span className="text-micro uppercase font-bold tracking-super-wide text-white/60">Temporal Trajectory</span>
+                <span className="text-micro uppercase font-bold tracking-super-wide text-white/70">Temporal Trajectory</span>
                 <div className="flex-1 h-px bg-white/10" />
              </div>
              <div className="w-full overflow-x-auto scroll-fade-x no-scrollbar rounded-[24px] md:rounded-[32px] border border-white/10 md:border-white/20 bg-black/40 md:bg-white/5 backdrop-blur-xl md:backdrop-blur-2xl p-4 md:p-8 flex gap-4 md:gap-8 snap-x" role="listbox">

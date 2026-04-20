@@ -81,6 +81,30 @@ export const getIPLocation = async (ip?: string, source: 'ip'|'webrtc' = 'ip', s
   }
 };
 
+// City-to-coordinate mapping for domestic IP API (which doesn't return lat/lon)
+const domesticCityCoords: Record<string, { lat: number; lon: number }> = {
+  '北京': { lat: 39.9042, lon: 116.4074 },
+  '上海': { lat: 31.2304, lon: 121.4737 },
+  '广州': { lat: 23.1291, lon: 113.2644 },
+  '深圳': { lat: 22.5431, lon: 114.0579 },
+  '杭州': { lat: 30.2741, lon: 120.1551 },
+  '成都': { lat: 30.5728, lon: 104.0668 },
+  '武汉': { lat: 30.5928, lon: 114.3055 },
+  '南京': { lat: 32.0603, lon: 118.7969 },
+  '重庆': { lat: 29.4316, lon: 106.9123 },
+  '西安': { lat: 34.3416, lon: 108.9398 },
+  '天津': { lat: 39.3434, lon: 117.3616 },
+  '苏州': { lat: 31.2990, lon: 120.5853 },
+  '长沙': { lat: 28.2282, lon: 112.9388 },
+  '郑州': { lat: 34.7466, lon: 113.6254 },
+  '青岛': { lat: 36.0671, lon: 120.3826 },
+  '大连': { lat: 38.9140, lon: 121.6147 },
+  '厦门': { lat: 24.4798, lon: 118.0894 },
+  '昆明': { lat: 25.0389, lon: 102.7183 },
+  '合肥': { lat: 31.8206, lon: 117.2272 },
+  '福州': { lat: 26.0745, lon: 119.2965 },
+};
+
 export const getDomesticIPLocation = async (signal?: AbortSignal): Promise<GeoLocationResult | null> => {
   try {
     const res = await fetch('https://myip.ipip.net/json', { signal });
@@ -93,13 +117,31 @@ export const getDomesticIPLocation = async (signal?: AbortSignal): Promise<GeoLo
     const city = p === c ? p : `${p} ${c}`;
     const isp = data.data.location[4] || 'Domestic Node';
     
+    // Try to resolve actual coordinates from city name
+    const cityKey = c || p;
+    const coords = domesticCityCoords[cityKey] || domesticCityCoords[p];
+    
+    // Without real coordinates, this location is too inaccurate for weather
+    if (!coords) {
+      return {
+        source: 'ip (domestic)',
+        lat: 35.8617,
+        lon: 104.1954,
+        city: city || 'Domestic',
+        country: 'China',
+        confidence: 5, // Very low — coordinates are just China's center
+        ip: [data.data.ip],
+        isp: [isp]
+      };
+    }
+    
     return {
       source: 'ip (domestic)',
-      lat: 35.8617,
-      lon: 104.1954,
+      lat: coords.lat,
+      lon: coords.lon,
       city: city || 'Domestic',
       country: 'China',
-      confidence: 30,
+      confidence: 60,
       ip: [data.data.ip],
       isp: [isp]
     };
@@ -150,9 +192,13 @@ export const getWebRTCLocation = (signal?: AbortSignal): Promise<GeoLocationResu
         if (match) {
           peer.close();
           const ip = match[1];
+          // Modern browsers use mDNS (.local) addresses — skip those
+          if (candidate.includes('.local')) {
+            resolve(null);
+            return;
+          }
           // Local IP mask check
           if (isPrivateIP(ip)) {
-            // Unlikely to geocode local IPs via ipapi.co
             resolve({ source: 'webrtc (local)', lat: 0, lon: 0, city: 'Local Network', confidence: 10, ip: [ip], isp: ['LAN'] });
           } else {
             const loc = await getIPLocation(ip, 'webrtc', signal);

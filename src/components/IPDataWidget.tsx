@@ -15,7 +15,7 @@ export const IPDataWidget = memo(() => {
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-[#00ffcc] animate-pulse shadow-[0_0_8px_rgba(0,255,204,0.8)]" />
-          <span className="text-micro uppercase font-black tracking-[0.25em] text-white/60">Network Telemetry</span>
+          <span className="text-micro uppercase font-black tracking-[0.25em] text-white/70">Network Telemetry</span>
         </div>
         <span className="text-[10px] font-bold text-[#00ffcc]/80 tracking-widest uppercase">
           {ipLocations.length} Node{ipLocations.length > 1 ? 's' : ''}
@@ -47,11 +47,11 @@ export const IPDataWidget = memo(() => {
             
             <div className="flex flex-col gap-1.5 mt-2">
               <div className="flex items-center gap-2 text-micro text-white/50 font-medium">
-                <span className="text-white/30 uppercase tracking-widest text-[9px] w-8">ISP</span>
+                <span className="text-white/40 uppercase tracking-widest text-[9px] w-8">ISP</span>
                 <span className="truncate text-white/80">{loc.isp?.join(', ') || 'Unknown'}</span>
               </div>
               <div className="flex items-center gap-2 text-micro text-white/50 font-medium">
-                <span className="text-white/30 uppercase tracking-widest text-[9px] w-8">LOC</span>
+                <span className="text-white/40 uppercase tracking-widest text-[9px] w-8">LOC</span>
                 <span className="truncate text-white/80">
                   {[loc.city, loc.country].filter(Boolean).join(', ') || 'Unknown'}
                 </span>

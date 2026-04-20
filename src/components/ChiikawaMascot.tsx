@@ -17,10 +17,7 @@ export const ChiikawaMascot = memo(() => {
         repeat: Infinity,
         ease: "easeInOut"
       }}
-      className="relative pointer-events-auto cursor-pointer hover:scale-110 active:scale-95 transition-transform z-30 flex items-center justify-center w-[80px] h-[80px]"
-      onClick={(e) => {
-         e.stopPropagation();
-      }}
+      className="relative pointer-events-auto z-30 flex items-center justify-center w-[80px] h-[80px]"
     >
       <img 
         src={kuliImage} 

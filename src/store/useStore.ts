@@ -15,17 +15,68 @@ interface AppState {
   vibeLoading: boolean;
   loadingLogs: string[];
   error: string | null;
-  lastRequestId: string;
   initApp: () => Promise<void>;
   setActiveLocation: (index: number) => Promise<void>;
 }
 
-// Memory cache for API responses
+// --- Internal state (not exposed to React) ---
+const CACHE_TTL = 5 * 60 * 1000;
 const weatherCache = new Map<string, { data: WeatherData; timestamp: number }>();
 const vibeCache = new Map<string, { data: VibeRecommendation; timestamp: number }>();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
 let currentAbortController: AbortController | null = null;
+let lastRequestId = '';
+
+/** Shared helper: fetch weather + vibe for a location, with caching & abort. */
+const fetchWeatherAndVibe = async (
+  location: GeoLocationResult,
+  requestId: string,
+  signal: AbortSignal,
+  set: (partial: Partial<AppState>) => void,
+  get: () => AppState,
+  onProgress?: (msg: string) => void,
+) => {
+  const cacheKey = `${location.lat},${location.lon}`;
+  const cachedWeather = weatherCache.get(cacheKey);
+
+  let weather: WeatherData | null = null;
+  if (cachedWeather && Date.now() - cachedWeather.timestamp < CACHE_TTL) {
+    weather = cachedWeather.data;
+    onProgress?.(`[CACHE] Retrieved atmospheric data for ${location.city}`);
+  } else {
+    weather = await getAggregatedWeather(location, onProgress, signal);
+    if (weather) weatherCache.set(cacheKey, { data: weather, timestamp: Date.now() });
+  }
+
+  if (lastRequestId !== requestId || signal.aborted) return;
+
+  if (!weather) {
+    set({ error: 'Failed to fetch weather data.', loading: false });
+    return;
+  }
+
+  set({ weatherData: weather, loading: false, vibeLoading: true });
+
+  const vibeCacheKey = weather.condition;
+  const cachedVibe = vibeCache.get(vibeCacheKey);
+
+  let vibe: VibeRecommendation | null = null;
+  if (cachedVibe && Date.now() - cachedVibe.timestamp < CACHE_TTL) {
+    vibe = cachedVibe.data;
+  } else {
+    vibe = await generateVibe(weather.condition, signal);
+    if (vibe) vibeCache.set(vibeCacheKey, { data: vibe, timestamp: Date.now() });
+  }
+
+  if (lastRequestId !== requestId || signal.aborted) return;
+  set({ vibeData: vibe, vibeLoading: false });
+};
+
+/** Create a fresh AbortController, cancelling any previous one. */
+const resetAbort = (): AbortSignal => {
+  currentAbortController?.abort();
+  currentAbortController = new AbortController();
+  return currentAbortController.signal;
+};
 
 export const useStore = create<AppState>((set, get) => ({
   locations: [],
@@ -36,75 +87,33 @@ export const useStore = create<AppState>((set, get) => ({
   vibeLoading: true,
   loadingLogs: [],
   error: null,
-  lastRequestId: '',
-  
-  initApp: async () => {
-    if (currentAbortController) currentAbortController.abort();
-    currentAbortController = new AbortController();
-    const signal = currentAbortController.signal;
 
+  initApp: async () => {
+    const signal = resetAbort();
     const requestId = crypto.randomUUID();
-    set({ loading: true, error: null, loadingLogs: ['Initializing deep-scan telemetry...'], lastRequestId: requestId });
-    
+    lastRequestId = requestId;
+    set({ loading: true, error: null, loadingLogs: ['Initializing deep-scan telemetry...'] });
+
     const log = (msg: string) => set((s) => {
-      // Use more efficient array update
-      const newLogs = s.loadingLogs.length >= 20 
-        ? [...s.loadingLogs.slice(1), msg] 
+      const newLogs = s.loadingLogs.length >= 20
+        ? [...s.loadingLogs.slice(1), msg]
         : [...s.loadingLogs, msg];
       return { loadingLogs: newLogs };
     });
 
     try {
       const locations = await getBestLocations(log, signal);
-      
-      if (get().lastRequestId !== requestId || signal.aborted) return;
+      if (lastRequestId !== requestId || signal.aborted) return;
 
       if (locations.length === 0) {
         set({ error: 'Failed to determine any location.', loading: false });
         return;
       }
       set({ locations, activeLocationIndex: 0 });
-      
-      const activeLoc = locations[0];
-      const cacheKey = `${activeLoc.lat},${activeLoc.lon}`;
-      const cachedWeather = weatherCache.get(cacheKey);
-      
-      let weather: WeatherData | null = null;
-      if (cachedWeather && (Date.now() - cachedWeather.timestamp < CACHE_TTL)) {
-        weather = cachedWeather.data;
-        log(`[CACHE] Retrieved atmospheric data for ${activeLoc.city}`);
-      } else {
-        weather = await getAggregatedWeather(activeLoc, log, signal);
-        if (weather) weatherCache.set(cacheKey, { data: weather, timestamp: Date.now() });
-      }
-      
-      if (get().lastRequestId !== requestId || signal.aborted) return;
 
-      if (!weather) {
-        set({ error: 'Failed to fetch weather data.', loading: false });
-        return;
-      }
-
-      set({ weatherData: weather, loading: false });
-
-      set({ vibeLoading: true });
-      const vibeCacheKey = weather.condition;
-      const cachedVibe = vibeCache.get(vibeCacheKey);
-      
-      let vibe: VibeRecommendation | null = null;
-      if (cachedVibe && (Date.now() - cachedVibe.timestamp < CACHE_TTL)) {
-        vibe = cachedVibe.data;
-      } else {
-        vibe = await generateVibe(weather.condition, signal);
-        if (vibe) vibeCache.set(vibeCacheKey, { data: vibe, timestamp: Date.now() });
-      }
-      
-      if (get().lastRequestId !== requestId || signal.aborted) return;
-      set({ vibeData: vibe, vibeLoading: false });
-      
+      await fetchWeatherAndVibe(locations[0], requestId, signal, set, get, log);
     } catch (e: unknown) {
-      if (signal.aborted) return;
-      if (get().lastRequestId !== requestId) return;
+      if (signal.aborted || lastRequestId !== requestId) return;
       set({ error: e instanceof Error ? e.message : 'Initialization failed', loading: false });
     }
   },
@@ -112,52 +121,16 @@ export const useStore = create<AppState>((set, get) => ({
   setActiveLocation: async (index: number) => {
     const { locations } = get();
     if (index < 0 || index >= locations.length) return;
-    
-    if (currentAbortController) currentAbortController.abort();
-    currentAbortController = new AbortController();
-    const signal = currentAbortController.signal;
 
+    const signal = resetAbort();
     const requestId = crypto.randomUUID();
-    set({ activeLocationIndex: index, loading: true, vibeLoading: true, error: null, lastRequestId: requestId });
-    
+    lastRequestId = requestId;
+    set({ activeLocationIndex: index, loading: true, vibeLoading: true, error: null });
+
     try {
-      const activeLoc = locations[index];
-      const cacheKey = `${activeLoc.lat},${activeLoc.lon}`;
-      const cachedWeather = weatherCache.get(cacheKey);
-      
-      let weather: WeatherData | null = null;
-      if (cachedWeather && (Date.now() - cachedWeather.timestamp < CACHE_TTL)) {
-        weather = cachedWeather.data;
-      } else {
-        weather = await getAggregatedWeather(activeLoc, undefined, signal);
-        if (weather) weatherCache.set(cacheKey, { data: weather, timestamp: Date.now() });
-      }
-      
-      if (get().lastRequestId !== requestId || signal.aborted) return;
-
-      if (!weather) {
-        set({ error: 'Failed to fetch weather data for this location.', loading: false });
-        return;
-      }
-
-      set({ weatherData: weather, loading: false });
-
-      const vibeCacheKey = weather.condition;
-      const cachedVibe = vibeCache.get(vibeCacheKey);
-      
-      let vibe: VibeRecommendation | null = null;
-      if (cachedVibe && (Date.now() - cachedVibe.timestamp < CACHE_TTL)) {
-        vibe = cachedVibe.data;
-      } else {
-        vibe = await generateVibe(weather.condition, signal);
-        if (vibe) vibeCache.set(vibeCacheKey, { data: vibe, timestamp: Date.now() });
-      }
-      
-      if (get().lastRequestId !== requestId || signal.aborted) return;
-      set({ vibeData: vibe, vibeLoading: false });
+      await fetchWeatherAndVibe(locations[index], requestId, signal, set, get);
     } catch (e: unknown) {
-      if (signal.aborted) return;
-      if (get().lastRequestId !== requestId) return;
+      if (signal.aborted || lastRequestId !== requestId) return;
       set({ error: e instanceof Error ? e.message : 'Failed to switch location', loading: false });
     }
   }

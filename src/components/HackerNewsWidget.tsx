@@ -2,13 +2,13 @@ import { useState, useEffect, memo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 
 interface HNStory {
-  id: number;
+  objectID: string;
   title: string;
   url?: string;
-  score: number;
-  by: string;
-  time: number;
-  descendants?: number; // comment count
+  points: number;
+  author: string;
+  created_at_i: number;
+  num_comments: number;
 }
 
 export const HackerNewsWidget = memo(() => {
@@ -36,19 +36,15 @@ export const HackerNewsWidget = memo(() => {
 
     const fetchHN = async () => {
       try {
-        const res = await fetch('https://hacker-news.firebaseio.com/v0/topstories.json', { signal: controller.signal });
-        const ids: number[] = await res.json();
-        const top10 = ids.slice(0, 10);
-
-        const fetchedStories = await Promise.all(
-          top10.map(async (id) => {
-            const sRes = await fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`, { signal: controller.signal });
-            return await sRes.json();
-          })
+        // Single request via Algolia HN API instead of 11 separate Firebase calls
+        const res = await fetch(
+          'https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage=10',
+          { signal: controller.signal }
         );
+        const data = await res.json();
 
-        if (isMounted) {
-          setStories(fetchedStories);
+        if (isMounted && data.hits) {
+          setStories(data.hits);
           setLoading(false);
         }
       } catch (e) {
@@ -59,7 +55,7 @@ export const HackerNewsWidget = memo(() => {
     };
 
     fetchHN();
-    return () => { 
+    return () => {
       isMounted = false;
       controller.abort();
     };
@@ -82,24 +78,24 @@ export const HackerNewsWidget = memo(() => {
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-[#ff6600] animate-pulse shadow-[0_0_8px_rgba(255,102,0,0.8)]" />
-          <span className="text-micro uppercase font-black tracking-[0.25em] text-white/60">Hacker News Top 10</span>
+          <span className="text-micro uppercase font-black tracking-[0.25em] text-white/70">Hacker News Top 10</span>
         </div>
-        <a 
-          href="https://news.ycombinator.com" 
-          target="_blank" 
+        <a
+          href="https://news.ycombinator.com"
+          target="_blank"
           rel="noopener noreferrer"
           className="text-[10px] font-bold text-[#ff6600]/80 hover:text-[#ff6600] transition-colors tracking-widest"
         >
           HN.CO
         </a>
       </div>
-      
+
       {/* Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {stories.map((story, i) => (
           <a
-            key={story.id}
-            href={story.url || `https://news.ycombinator.com/item?id=${story.id}`}
+            key={story.objectID}
+            href={story.url || `https://news.ycombinator.com/item?id=${story.objectID}`}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-start gap-4 p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 transition-all duration-300 group"
@@ -111,14 +107,14 @@ export const HackerNewsWidget = memo(() => {
               <span className="text-white/90 text-[13.5px] font-semibold leading-snug group-hover:text-white transition-colors line-clamp-2">
                 {story.title}
               </span>
-              <div className="flex items-center gap-3 text-[10px] text-white/30 font-bold uppercase tracking-tight">
+              <div className="flex items-center gap-3 text-[10px] text-white/70 font-bold uppercase tracking-tight">
                 <span className="flex items-center gap-1 text-[#ff6600]/70">
-                   {story.score} pts
+                   {story.points} pts
                 </span>
-                <span className="truncate max-w-[70px]">@{story.by}</span>
-                <span>{formatTime(story.time)}</span>
+                <span className="truncate max-w-[70px]">@{story.author}</span>
+                <span>{formatTime(story.created_at_i)}</span>
                 <span className="flex items-center gap-1">
-                   {story.descendants || 0} comments
+                   {story.num_comments || 0} comments
                 </span>
               </div>
             </div>
