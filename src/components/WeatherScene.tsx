@@ -9,7 +9,7 @@ interface WeatherSceneProps {
 
 const Rain = () => {
   const rainGeo = useRef<THREE.BufferGeometry>(null);
-  const rainCount = 15000;
+  const rainCount = 5000;
   
   React.useEffect(() => {
     if (!rainGeo.current) return;
@@ -50,7 +50,7 @@ const Rain = () => {
 
 const Snow = () => {
   const snowGeo = useRef<THREE.BufferGeometry>(null);
-  const snowCount = 8000;
+  const snowCount = 2000;
   
   React.useEffect(() => {
     if (!snowGeo.current) return;

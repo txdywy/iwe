@@ -43,6 +43,13 @@ const seedLibrary = {
 // ── Music via MusicBrainz + CoverArtArchive ──
 // KEY INSIGHT: img tags load CoverArtArchive URLs without CORS restriction — only fetch() is blocked.
 // MusicBrainz release objects include a `cover-art-archive.front` boolean; use that to avoid any HEAD checks.
+interface MusicBrainzRelease {
+  id: string;
+  title: string;
+  'artist-credit'?: { artist: { name: string } }[];
+  'cover-art-archive'?: { front: boolean };
+}
+
 const fetchMusic = async (query: string): Promise<VibeItem | undefined> => {
   try {
     const res = await fetch(
@@ -51,7 +58,7 @@ const fetchMusic = async (query: string): Promise<VibeItem | undefined> => {
     );
     if (!res.ok) return undefined;
     const data = await res.json();
-    const releases: any[] = data.releases || [];
+    const releases: MusicBrainzRelease[] = data.releases || [];
 
     // Find first release that MusicBrainz confirms has a front cover
     const withCover = releases.find(r => r['cover-art-archive']?.front === true);
@@ -71,14 +78,15 @@ const fetchMusic = async (query: string): Promise<VibeItem | undefined> => {
       coverUrl,
       link: `https://musicbrainz.org/release/${best.id}`,
     };
-  } catch (e) {
-    console.warn('MusicBrainz fetch failed for', query);
-
+  } catch {
+    return undefined;
   }
-  return undefined;
 };
 
-// ── Movies via Wikipedia REST API ──
+interface WikiSearchPage {
+  key: string;
+}
+
 const fetchMovie = async (query: string): Promise<VibeItem | undefined> => {
   try {
     // Step 1: Search Wikipedia for the film page
@@ -87,7 +95,7 @@ const fetchMovie = async (query: string): Promise<VibeItem | undefined> => {
     );
     if (!searchRes.ok) return undefined;
     const searchData = await searchRes.json();
-    const pages: any[] = searchData.pages || [];
+    const pages: WikiSearchPage[] = searchData.pages || [];
 
     for (const page of pages) {
       // Step 2: Get summary + thumbnail
@@ -106,13 +114,12 @@ const fetchMovie = async (query: string): Promise<VibeItem | undefined> => {
         };
       }
     }
-  } catch (e) {
-    console.warn('Wikipedia movie fetch failed for', query);
+  } catch {
+    return undefined;
   }
   return undefined;
 };
 
-// ── Books via iTunes eBook API (not intercepted by Apple Music extension) ──
 const fetchITunesBook = async (query: string): Promise<VibeItem | undefined> => {
   try {
     const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=ebook&limit=1`);
@@ -131,8 +138,8 @@ const fetchITunesBook = async (query: string): Promise<VibeItem | undefined> => 
         link: item.trackViewUrl,
       };
     }
-  } catch (e) {
-    console.warn('iTunes Book fetch failed for', query);
+  } catch {
+    return undefined;
   }
   return undefined;
 };

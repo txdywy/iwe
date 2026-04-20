@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 
 const ChiikawaSVG = () => (
@@ -63,26 +63,24 @@ const UsagiSVG = () => (
 const mascots = [ChiikawaSVG, HachiwareSVG, UsagiSVG];
 
 export const ChiikawaMascot: React.FC = () => {
-  const [MascotComponent, setMascotComponent] = useState<React.FC | null>(null);
-
-  useEffect(() => {
-    // Pick random mascot
+  const [MascotComponent, setMascotComponent] = useState<React.FC>(() => {
     const randomIdx = Math.floor(Math.random() * mascots.length);
-    setMascotComponent(() => mascots[randomIdx]);
-  }, []);
+    return mascots[randomIdx];
+  });
 
-  if (!MascotComponent) return null;
+  const [randomDuration] = useState(() => 3 + Math.random());
 
   return (
     <motion.div
       animate={{ y: [0, -8, 0], rotate: [-2, 2, -2] }}
       transition={{
-        duration: 3 + Math.random(),
+        duration: randomDuration,
         repeat: Infinity,
         ease: "easeInOut"
       }}
-      className="absolute -top-14 right-4 pointer-events-auto cursor-pointer hover:scale-110 active:scale-95 transition-transform"
-      onClick={() => {
+      className="absolute -top-12 right-2 pointer-events-auto cursor-pointer hover:scale-110 active:scale-95 transition-transform z-30"
+      onClick={(e) => {
+         e.stopPropagation();
          const randomIdx = Math.floor(Math.random() * mascots.length);
          setMascotComponent(() => mascots[randomIdx]);
       }}

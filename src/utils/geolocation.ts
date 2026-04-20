@@ -1,5 +1,5 @@
 export interface GeoLocationResult {
-  source: 'gps' | 'ip' | 'webrtc' | 'l10n' | 'timezone';
+  source: string;
   lat: number;
   lon: number;
   city?: string;
@@ -47,14 +47,14 @@ export const getIPLocation = async (ip?: string, source: 'ip'|'webrtc' = 'ip'): 
     const data = await res.json();
     if (data.error) return null;
     return {
-      source: source === 'ip' ? 'ip (overseas)' as any : source,
+      source: source === 'ip' ? 'ip (overseas)' : source,
       lat: data.latitude,
       lon: data.longitude,
       city: data.city,
       country: data.country_name,
       confidence: source === 'webrtc' ? 90 : 80,
     };
-  } catch (error) {
+  } catch {
     return null;
   }
 };
@@ -75,7 +75,7 @@ export const getDomesticIPLocation = async (): Promise<GeoLocationResult | null>
     // We cannot easily get exact lat/lon from ipip json alone, but we can set a dummy or use reverse lookup if needed.
     // For Vibe purposes, we'll map a basic central coordinate or let it just be an extra location badge.
     return {
-      source: 'ip (domestic)' as any,
+      source: 'ip (domestic)',
       lat: 35.8617,
       lon: 104.1954, // central China roughly
       city: city || 'Domestic Node',
@@ -113,7 +113,7 @@ export const getWebRTCLocation = (): Promise<GeoLocationResult | null> => {
         }
       };
       setTimeout(() => { peer.close(); resolve(null); }, 3000);
-    } catch (e) {
+    } catch {
       resolve(null);
     }
   });
@@ -215,7 +215,7 @@ export const getBestLocations = async (onProgress?: (msg: string) => void): Prom
       deduped.push(loc);
     } else {
       // It is duplicate. Append source info so user knows the power of our sniffer.
-      isDuplicate.source = `${isDuplicate.source}+${loc.source}` as any;
+      isDuplicate.source = `${isDuplicate.source}+${loc.source}`;
     }
   }
 

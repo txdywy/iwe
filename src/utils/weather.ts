@@ -19,7 +19,9 @@ export interface WeatherData {
 }
 
 const mapWeatherCode = (code: number): WeatherData['condition'] => {
+  if (code === 0) return 'Clear';
   if (code >= 1 && code <= 3) return 'Clouds';
+  if (code >= 45 && code <= 48) return 'Clouds'; // Fog
   if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return 'Rain';
   if (code >= 71 && code <= 77 || code === 85 || code === 86) return 'Snow';
   if (code >= 95) return 'Thunderstorm';
@@ -43,7 +45,9 @@ const fetchOpenMeteo = async (lat: number, lon: number): Promise<WeatherData | n
         const aqiData = await aqiRes.json();
         aqi = aqiData.current?.european_aqi;
       }
-    } catch {}
+    } catch {
+      // Ignore AQI fetch errors
+    }
 
     const current = data.current;
     if (!current) return null;
@@ -78,6 +82,12 @@ const fetchOpenMeteo = async (lat: number, lon: number): Promise<WeatherData | n
   }
 };
 
+interface WttrForecast {
+  date: string;
+  maxtempC: string;
+  mintempC: string;
+}
+
 const fetchWttrIn = async (city?: string, lat?: number, lon?: number): Promise<WeatherData | null> => {
   try {
     const target = city ? city : (lat !== undefined && lon !== undefined ? `${lat},${lon}` : '');
@@ -97,7 +107,7 @@ const fetchWttrIn = async (city?: string, lat?: number, lon?: number): Promise<W
     if (desc.includes('thunder') || desc.includes('storm')) condition = 'Thunderstorm';
 
     const forecastList: DailyForecast[] = [];
-    data.weather?.forEach((day: any) => {
+    data.weather?.forEach((day: WttrForecast) => {
       forecastList.push({
         time: day.date,
         maxTemp: parseFloat(day.maxtempC),
@@ -115,7 +125,7 @@ const fetchWttrIn = async (city?: string, lat?: number, lon?: number): Promise<W
       forecast: forecastList,
       sourceUsed: 'wttr.in',
     };
-  } catch (e) {
+  } catch {
     return null;
   }
 };
