@@ -62,6 +62,11 @@ function App() {
         {/* Row 1: Weather Info & Secondary Controls */}
         <div className="flex flex-col md:flex-row items-center md:items-start justify-center w-full max-w-7xl gap-8 md:gap-16">
           
+          {/* Mobile Mascot (Top Right Absolute) */}
+          <div className="md:hidden absolute top-4 right-4 z-50">
+             <ChiikawaMascot />
+          </div>
+
           {/* Left Panel: Hero Temperature */}
           <AnimatePresence mode="wait">
             <motion.div 
@@ -72,7 +77,10 @@ function App() {
               className="flex flex-col items-center text-center md:items-start md:text-left shrink-0 md:pt-4"
             >
               <div className="relative">
-                 <ChiikawaMascot />
+                 {/* Desktop Mascot */}
+                 <div className="hidden md:block">
+                   <ChiikawaMascot />
+                 </div>
                  <h1 className="text-8xl md:text-[10rem] font-extralight tracking-tighter text-white drop-shadow-2xl m-0 leading-none">
                    {weatherData?.temperature.toFixed(0)}°
                  </h1>
@@ -142,18 +150,8 @@ function App() {
           </div>
         )}
 
-        {/* Row 3: Hacker News Wide Module */}
-        <div className="w-full max-w-7xl pb-4">
-          <HackerNewsWidget />
-        </div>
-
-        {/* Row 4: IP Data Module */}
-        <div className="w-full max-w-7xl pb-10">
-          <IPDataWidget />
-        </div>
-
-        {/* Mobile-Only Location Pill Scroller (Since sidebar is hidden) */}
-        <div className="md:hidden w-full flex flex-col gap-3 pb-8">
+        {/* Row 3: Mobile-Only Location Pill Scroller (Since sidebar is hidden) */}
+        <div className="md:hidden w-full flex flex-col gap-3">
            <div className="flex items-center gap-4 mb-1 px-2">
               <span className="text-[11px] uppercase font-black tracking-[0.3em] text-white/40">Locations</span>
               <div className="flex-1 h-px bg-white/10" />
@@ -170,6 +168,16 @@ function App() {
                 />
               ))}
            </div>
+        </div>
+
+        {/* Row 4: Hacker News Wide Module */}
+        <div className="w-full max-w-7xl pb-4">
+          <HackerNewsWidget />
+        </div>
+
+        {/* Row 5: IP Data Module */}
+        <div className="w-full max-w-7xl pb-10">
+          <IPDataWidget />
         </div>
 
       </div>

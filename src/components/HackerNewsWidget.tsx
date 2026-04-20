@@ -64,7 +64,7 @@ export const HackerNewsWidget: React.FC = () => {
   if (stories.length === 0) return null;
 
   return (
-    <div className="w-full md:max-w-none md:rounded-[32px] md:border md:border-white/20 md:bg-white/5 md:backdrop-blur-2xl md:px-6 md:pt-5 md:pb-6 shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] flex flex-col gap-4">
+    <div className="w-full md:max-w-none rounded-[24px] md:rounded-[32px] border border-white/10 md:border-white/20 bg-black/40 md:bg-white/5 backdrop-blur-xl md:backdrop-blur-2xl p-4 md:px-6 md:pt-5 md:pb-6 shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] flex flex-col gap-4">
       {/* Header */}
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
