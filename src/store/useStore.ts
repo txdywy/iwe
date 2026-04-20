@@ -21,10 +21,25 @@ interface AppState {
 
 // --- Internal state (not exposed to React) ---
 const CACHE_TTL = 5 * 60 * 1000;
+const MAX_CACHE_SIZE = 50;
 const weatherCache = new Map<string, { data: WeatherData; timestamp: number }>();
 const vibeCache = new Map<string, { data: VibeRecommendation; timestamp: number }>();
 let currentAbortController: AbortController | null = null;
 let lastRequestId = '';
+
+/** Evict expired entries from a cache map, and cap size. */
+const evictCache = <T>(cache: Map<string, { data: T; timestamp: number }>) => {
+  const now = Date.now();
+  for (const [key, entry] of cache) {
+    if (now - entry.timestamp > CACHE_TTL) cache.delete(key);
+  }
+  // If still over limit, remove oldest entries
+  if (cache.size > MAX_CACHE_SIZE) {
+    const entries = [...cache.entries()].sort((a, b) => a[1].timestamp - b[1].timestamp);
+    const toRemove = entries.slice(0, cache.size - MAX_CACHE_SIZE);
+    for (const [key] of toRemove) cache.delete(key);
+  }
+};
 
 /** Shared helper: fetch weather + vibe for a location, with caching & abort. */
 const fetchWeatherAndVibe = async (
@@ -35,6 +50,8 @@ const fetchWeatherAndVibe = async (
   get: () => AppState,
   onProgress?: (msg: string) => void,
 ) => {
+  evictCache(weatherCache);
+
   const cacheKey = `${location.lat},${location.lon}`;
   const cachedWeather = weatherCache.get(cacheKey);
 
@@ -56,6 +73,7 @@ const fetchWeatherAndVibe = async (
 
   set({ weatherData: weather, loading: false, vibeLoading: true });
 
+  evictCache(vibeCache);
   const vibeCacheKey = weather.condition;
   const cachedVibe = vibeCache.get(vibeCacheKey);
 
@@ -106,15 +124,17 @@ export const useStore = create<AppState>((set, get) => ({
       if (lastRequestId !== requestId || signal.aborted) return;
 
       if (locations.length === 0) {
-        set({ error: 'Failed to determine any location.', loading: false });
+        set({ error: 'Failed to determine any location.', loading: false, loadingLogs: [] });
         return;
       }
       set({ locations, activeLocationIndex: 0 });
 
       await fetchWeatherAndVibe(locations[0], requestId, signal, set, get, log);
+      // Clear loading logs after successful init
+      if (lastRequestId === requestId) set({ loadingLogs: [] });
     } catch (e: unknown) {
       if (signal.aborted || lastRequestId !== requestId) return;
-      set({ error: e instanceof Error ? e.message : 'Initialization failed', loading: false });
+      set({ error: e instanceof Error ? e.message : 'Initialization failed', loading: false, loadingLogs: [] });
     }
   },
 
@@ -125,7 +145,8 @@ export const useStore = create<AppState>((set, get) => ({
     const signal = resetAbort();
     const requestId = crypto.randomUUID();
     lastRequestId = requestId;
-    set({ activeLocationIndex: index, loading: true, vibeLoading: true, error: null });
+    // Clear stale vibeData immediately so UI doesn't flash old content
+    set({ activeLocationIndex: index, loading: true, vibeLoading: true, vibeData: null, error: null });
 
     try {
       await fetchWeatherAndVibe(locations[index], requestId, signal, set, get);

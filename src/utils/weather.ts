@@ -1,4 +1,5 @@
 import type { GeoLocationResult } from './geolocation';
+import type { WeatherCondition } from '../types/weather';
 
 export interface DailyForecast {
   time: string;
@@ -9,7 +10,7 @@ export interface DailyForecast {
 
 export interface WeatherData {
   temperature: number;
-  condition: 'Clear' | 'Clouds' | 'Rain' | 'Snow' | 'Thunderstorm';
+  condition: WeatherCondition;
   precipitationProb: number;
   humidity: number;
   aqi?: number;
@@ -59,10 +60,19 @@ const fetchOpenMeteo = async (lat: number, lon: number, signal?: AbortSignal): P
       }
     }
 
+    // Find current hour's precipitation probability
+    let precipProb = 0;
+    if (data.hourly?.precipitation_probability && data.hourly?.time) {
+      const nowISO = current.time; // e.g. "2026-04-20T17:00"
+      const nowHour = nowISO.slice(0, 13); // "2026-04-20T17"
+      const hourIdx = data.hourly.time.findIndex((t: string) => t.startsWith(nowHour));
+      precipProb = data.hourly.precipitation_probability[hourIdx >= 0 ? hourIdx : 0] || 0;
+    }
+
     return {
       temperature: current.temperature_2m,
       condition,
-      precipitationProb: data.hourly?.precipitation_probability?.[0] || 0,
+      precipitationProb: precipProb,
       humidity: current.relative_humidity_2m || 50,
       aqi,
       uvIndex: data.daily?.uv_index_max?.[0], // Today's max UV

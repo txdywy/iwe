@@ -54,7 +54,10 @@ const fetchMusic = async (query: string, signal?: AbortSignal): Promise<VibeItem
   try {
     const res = await fetch(
       `https://musicbrainz.org/ws/2/release?query=${encodeURIComponent(query)}&fmt=json&limit=5`,
-      { signal }
+      {
+        signal,
+        headers: { 'User-Agent': 'iWe/1.0.0 (https://github.com/txdywy/iwe)' },
+      }
     );
     if (!res.ok) return undefined;
     const data = await res.json();
@@ -161,8 +164,10 @@ const fisherYatesShuffle = <T>(array: T[]): T[] => {
   return arr;
 };
 
+import type { WeatherCondition } from '../types/weather';
+
 export const generateVibe = async (
-  condition: 'Clear' | 'Clouds' | 'Rain' | 'Snow' | 'Thunderstorm',
+  condition: WeatherCondition,
   signal?: AbortSignal
 ): Promise<VibeRecommendation> => {
   const seeds = seedLibrary[condition] || seedLibrary.Clear;

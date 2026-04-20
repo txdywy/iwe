@@ -13,6 +13,9 @@ export default defineConfig({
           if (id.includes('three') || id.includes('@react-three')) {
             return 'three-bundle';
           }
+          if (id.includes('framer-motion')) {
+            return 'framer-motion';
+          }
         },
       },
     },

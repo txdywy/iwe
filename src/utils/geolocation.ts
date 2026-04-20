@@ -61,6 +61,8 @@ export const getIPLocation = async (ip?: string, source: 'ip'|'webrtc' = 'ip', s
     const url = ip ? `https://ipapi.co/${ip}/json/` : 'https://ipapi.co/json/';
     const res = await fetch(url, { signal });
     if (!res.ok) return null;
+    // Handle rate limiting (HTTP 429) gracefully
+    if (res.status === 429) return null;
     const data = await res.json();
     if (data.error) return null;
     
@@ -302,21 +304,30 @@ export const getBestLocations = async (onProgress?: (msg: string) => void, signa
   if (onProgress) onProgress("Cross-referencing and deduplicating coordinates...");
 
   // Normalize city name for dedup comparison
+  // Derive zh→en mapping from domesticCityCoords keys to avoid duplicate data
+  const zhToEn: Record<string, string> = Object.fromEntries(
+    Object.keys(domesticCityCoords).map(zh => [zh, zh.toLowerCase()])
+  );
+  // Add pinyin mappings for English matching
+  const pinyinMap: Record<string, string> = {
+    '北京': 'beijing', '上海': 'shanghai', '广州': 'guangzhou', '深圳': 'shenzhen',
+    '杭州': 'hangzhou', '成都': 'chengdu', '武汉': 'wuhan', '南京': 'nanjing',
+    '重庆': 'chongqing', '西安': 'xian', '天津': 'tianjin', '苏州': 'suzhou',
+    '长沙': 'changsha', '郑州': 'zhengzhou', '青岛': 'qingdao', '大连': 'dalian',
+    '厦门': 'xiamen', '昆明': 'kunming', '合肥': 'hefei', '福州': 'fuzhou',
+  };
+
   const normalizeCityName = (city?: string): string => {
     if (!city) return '';
-    // Map common Chinese city names to their English equivalents
-    const zhToEn: Record<string, string> = {
-      '北京': 'beijing', '上海': 'shanghai', '广州': 'guangzhou', '深圳': 'shenzhen',
-      '杭州': 'hangzhou', '成都': 'chengdu', '武汉': 'wuhan', '南京': 'nanjing',
-      '重庆': 'chongqing', '西安': 'xian', '天津': 'tianjin', '苏州': 'suzhou',
-      '长沙': 'changsha', '郑州': 'zhengzhou', '青岛': 'qingdao', '大连': 'dalian',
-      '厦门': 'xiamen', '昆明': 'kunming', '合肥': 'hefei', '福州': 'fuzhou',
-    };
     // Strip suffixes like "(L10n)", "(TZ)" and normalize
     const cleaned = city.replace(/\s*\(.*?\)\s*/g, '').trim().toLowerCase();
-    // Check if it's a Chinese name we can map
-    for (const [zh, en] of Object.entries(zhToEn)) {
-      if (cleaned.includes(zh)) return en;
+    // Check if it's a Chinese name we can map to pinyin
+    for (const [zh, pinyin] of Object.entries(pinyinMap)) {
+      if (cleaned.includes(zh)) return pinyin;
+    }
+    // Also check zhToEn for exact Chinese character match
+    for (const [zh] of Object.entries(zhToEn)) {
+      if (cleaned.includes(zh)) return pinyinMap[zh] || zh;
     }
     // For multi-word names, take the first significant word
     return cleaned.split(/[\s,]+/)[0];

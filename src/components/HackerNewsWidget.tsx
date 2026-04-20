@@ -14,6 +14,7 @@ interface HNStory {
 export const HackerNewsWidget = memo(() => {
   const [stories, setStories] = useState<HNStory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
 
   const formatTime = useCallback((time: number) => {
@@ -30,11 +31,15 @@ export const HackerNewsWidget = memo(() => {
     return () => clearInterval(interval);
   }, []);
 
+  const [fetchKey, setFetchKey] = useState(0);
+
   useEffect(() => {
     let isMounted = true;
     const controller = new AbortController();
 
     const fetchHN = async () => {
+      setLoading(true);
+      setFetchError(false);
       try {
         // Single request via Algolia HN API instead of 11 separate Firebase calls
         const res = await fetch(
@@ -50,6 +55,7 @@ export const HackerNewsWidget = memo(() => {
       } catch (e) {
         if (isMounted && !(e instanceof Error && e.name === 'AbortError')) {
           setLoading(false);
+          setFetchError(true);
         }
       }
     };
@@ -59,7 +65,7 @@ export const HackerNewsWidget = memo(() => {
       isMounted = false;
       controller.abort();
     };
-  }, []);
+  }, [fetchKey]);
 
   if (loading) {
     return (
@@ -70,7 +76,22 @@ export const HackerNewsWidget = memo(() => {
     );
   }
 
-  if (stories.length === 0) return null;
+  if (stories.length === 0 && !loading) {
+    if (fetchError) {
+      return (
+        <div className="w-full md:max-w-none rounded-[24px] md:rounded-[32px] border border-white/10 md:border-white/20 bg-black/40 md:bg-white/5 backdrop-blur-xl p-6 flex items-center justify-center gap-3">
+          <span className="text-white/50 text-xs">Failed to load Hacker News</span>
+          <button
+            onClick={() => setFetchKey(k => k + 1)}
+            className="text-[10px] font-bold text-[#ff6600] bg-white/10 hover:bg-white/20 px-3 py-1 rounded-full transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      );
+    }
+    return null;
+  }
 
   return (
     <div className="w-full md:max-w-none rounded-[24px] md:rounded-[32px] border border-white/10 md:border-white/20 bg-black/40 md:bg-white/5 backdrop-blur-xl md:backdrop-blur-2xl p-4 md:px-6 md:pt-5 md:pb-6 shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] flex flex-col gap-4">

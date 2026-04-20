@@ -1,13 +1,14 @@
 import { useState, memo } from 'react';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import kuliImage from '../assets/kuli.png';
 
 export const ChiikawaMascot = memo(() => {
   const [randomDuration] = useState(() => 3 + Math.random());
+  const shouldReduceMotion = useReducedMotion();
 
   return (
     <motion.div
-      animate={{ 
+      animate={shouldReduceMotion ? {} : { 
         y: [0, -10, 0], 
         rotate: [-5, 5, -5],
         scale: [1, 1.05, 1]
@@ -17,7 +18,7 @@ export const ChiikawaMascot = memo(() => {
         repeat: Infinity,
         ease: "easeInOut"
       }}
-      className="relative pointer-events-auto z-30 flex items-center justify-center w-[80px] h-[80px]"
+      className="relative pointer-events-auto z-30 flex items-center justify-center w-[80px] h-[80px] will-change-transform"
     >
       <img 
         src={kuliImage} 

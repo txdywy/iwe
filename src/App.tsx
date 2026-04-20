@@ -6,6 +6,7 @@ import { ChiikawaMascot } from './components/ChiikawaMascot';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MetricCard, ForecastCard, LocationButton } from './components/WeatherUIComponents';
 import { getWeatherEmoji } from './utils/weatherIcons';
+import type { WeatherCondition } from './types/weather';
 
 // Lazy load non-critical components
 const WeatherScene = lazy(() => import('./components/WeatherScene').then(m => ({ default: m.WeatherScene })));
@@ -53,12 +54,12 @@ function App() {
   }
 
   const activeLoc = locations[activeLocationIndex];
-  const condition = weatherData?.condition || 'Clear';
+  const condition: WeatherCondition = weatherData?.condition ?? 'Clear';
 
   return (
     <main className="relative min-h-screen w-full font-sans">
       {/* Weather Scene Fixed Background */}
-      <div className="fixed inset-0 -z-10 pointer-events-none">
+      <div className="fixed inset-0 -z-10 pointer-events-none" style={{ contain: 'strict' }}>
         <Suspense fallback={<div className="absolute inset-0 bg-gray-900" />}>
           <WeatherScene condition={condition} timezone={weatherData?.timezone} />
         </Suspense>
@@ -71,7 +72,7 @@ function App() {
         {locations.length > 0 && (
           <div className="md:hidden w-full flex flex-col gap-2 mt-2">
              <div className="flex items-center justify-between">
-               <div className="overflow-x-auto no-scrollbar scroll-fade-x flex gap-2 py-1 px-1 flex-1 pr-2">
+               <div className="overflow-x-auto no-scrollbar scroll-fade-x flex gap-2 py-1 px-1 flex-1 pr-2" role="listbox" aria-label="Locations">
                   {locations.map((loc, idx) => (
                     <LocationButton
                       key={loc.lat + '-' + loc.lon}
@@ -145,7 +146,7 @@ function App() {
                 Discovery Nodes
                 {loading && <div className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
               </h3>
-              <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto no-scrollbar scroll-fade-y pr-1">
+              <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto no-scrollbar scroll-fade-y pr-1" role="listbox" aria-label="Locations">
                 {locations.length === 0 && !error && (
                   <div className="text-white/40 text-sm p-2 italic animate-pulse">Scanning frequencies...</div>
                 )}

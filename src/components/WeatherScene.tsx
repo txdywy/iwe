@@ -1,8 +1,9 @@
-import { useRef, memo, useState, useMemo, useEffect, Component } from 'react';
+import { useRef, memo, useState, useEffect, Component } from 'react';
 import type { ReactNode, ErrorInfo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Stars, Cloud, Sky } from '@react-three/drei';
 import { PointLight, MathUtils, ShaderMaterial } from 'three';
+import type { WeatherCondition } from '../types/weather';
 
 // ── Error Boundary for WebGL crashes ──
 interface ErrorBoundaryState { hasError: boolean }
@@ -25,7 +26,7 @@ class WeatherSceneErrorBoundary extends Component<{ children: ReactNode; bgColor
 }
 
 interface WeatherSceneProps {
-  condition: 'Clear' | 'Clouds' | 'Rain' | 'Snow' | 'Thunderstorm';
+  condition: WeatherCondition;
   timezone?: string;
 }
 
@@ -189,15 +190,15 @@ export const WeatherScene = memo(({ condition, timezone }: WeatherSceneProps) =>
     : condition === 'Snow' ? '#78909C'
     : '#4a5568';
 
-  // Recompute day/night when condition or timezone changes, and refresh every 10 min
-  const [isNight, setIsNight] = useState(() => computeIsNight(timezone));
-
-  useMemo(() => {
-    setIsNight(computeIsNight(timezone));
-  }, [timezone, condition]);
+  // Derive day/night from timezone + condition. Refreshes every 10 min.
+  const [nightTick, setNightTick] = useState(0);
+  const isNight = (() => {
+    void nightTick; // depend on tick to force recompute
+    return computeIsNight(timezone);
+  })();
 
   useEffect(() => {
-    const interval = setInterval(() => setIsNight(computeIsNight(timezone)), 10 * 60 * 1000);
+    const interval = setInterval(() => setNightTick(t => t + 1), 10 * 60 * 1000);
     return () => clearInterval(interval);
   }, [timezone]);
 

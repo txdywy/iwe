@@ -9,29 +9,24 @@ export const MetricCard = memo(({ label, value, unit }: { label: string; value: 
 
 const dateFormatter = new Intl.DateTimeFormat('en-US', { weekday: 'short', day: 'numeric' });
 
+const formatDate = (dateStr: string) => dateFormatter.format(new Date(dateStr));
+
 export const ForecastCard = memo(({ 
   time, 
   emoji, 
   maxTemp, 
   minTemp,
-  isActive 
 }: { 
   time: string; 
   emoji: string; 
   maxTemp: number; 
   minTemp: number;
-  isActive?: boolean;
 }) => {
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return dateFormatter.format(date);
-  };
-
   return (
     <div 
-      className={`flex flex-col items-center justify-center shrink-0 w-20 md:w-24 snap-center space-y-2 md:space-y-3 p-2 md:p-0 rounded-2xl transition-all ${isActive ? 'bg-white/10 border border-white/20' : 'border border-transparent'}`}
+      className="flex flex-col items-center justify-center shrink-0 w-20 md:w-24 snap-center space-y-2 md:space-y-3 p-2 md:p-0 rounded-2xl border border-transparent"
       role="option"
-      aria-selected={isActive}
+      aria-selected={false}
     >
       <span className="text-white/70 text-tiny font-medium whitespace-nowrap">{formatDate(time)}</span>
       <span className="text-3xl md:text-4xl filter drop-shadow-md">{emoji}</span>
