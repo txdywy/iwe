@@ -28,33 +28,34 @@ export const LoadingScreen = () => {
         className="absolute w-[500px] h-[500px] bg-white blur-[120px] rounded-full pointer-events-none"
       />
 
-      {/* Abstract Atmospheric Data Visualizations */}
       <div className="absolute inset-0 opacity-20 pointer-events-none flex flex-col justify-end pb-20 items-center overflow-hidden mix-blend-screen">
-        <svg viewBox="0 0 1000 200" className="w-[150vw] h-48 opacity-40">
+        <svg viewBox="0 0 1000 200" className="w-[150vw] h-48 opacity-40" xmlns="http://www.w3.org/2000/svg">
           <motion.path
-            d="M 0 100 Q 250 100, 500 100 T 1000 100"
+            initial={{ d: "M 0 100 Q 250 100, 500 100 T 1000 100" }}
             fill="transparent"
             stroke="white"
             strokeWidth="1"
             animate={{
               d: [
+                "M 0 100 Q 250 100, 500 100 T 1000 100",
                 "M 0 100 Q 250 50, 500 100 T 1000 100",
                 "M 0 100 Q 250 150, 500 100 T 1000 100",
-                "M 0 100 Q 250 50, 500 100 T 1000 100"
+                "M 0 100 Q 250 100, 500 100 T 1000 100"
               ]
             }}
             transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
           />
           <motion.path
-            d="M 0 100 Q 250 100, 500 100 T 1000 100"
+            initial={{ d: "M 0 100 Q 250 100, 500 100 T 1000 100" }}
             fill="transparent"
             stroke="rgba(255,255,255,0.4)"
             strokeWidth="2"
             animate={{
               d: [
+                "M 0 100 Q 250 100, 500 100 T 1000 100",
                 "M 0 100 Q 250 180, 500 100 T 1000 100",
                 "M 0 100 Q 250 20, 500 100 T 1000 100",
-                "M 0 100 Q 250 180, 500 100 T 1000 100"
+                "M 0 100 Q 250 100, 500 100 T 1000 100"
               ]
             }}
             transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
