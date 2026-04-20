@@ -4,6 +4,7 @@ import { WeatherScene } from './components/WeatherScene';
 import { LoadingScreen } from './components/LoadingScreen';
 import { VibeWidget } from './components/VibeWidget';
 import { ChiikawaMascot } from './components/ChiikawaMascot';
+import { HackerNewsWidget } from './components/HackerNewsWidget';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MetricCard, ForecastCard, LocationButton } from './components/WeatherUIComponents';
 import { getWeatherEmoji } from './utils/weatherIcons';
@@ -113,6 +114,10 @@ function App() {
             <div className="mt-6">
               <VibeWidget vibeData={vibeData} loading={vibeLoading} />
             </div>
+
+            <div className="mt-6">
+              <HackerNewsWidget />
+            </div>
           </div>
         </div>
 
@@ -194,6 +199,11 @@ function App() {
                   />
                 ))}
               </div>
+            </div>
+
+            {/* 4. Hacker News Widget */}
+            <div className="shrink-0 w-full mb-4">
+              <HackerNewsWidget />
             </div>
 
           </div>
