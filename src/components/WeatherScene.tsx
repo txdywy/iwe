@@ -26,7 +26,7 @@ const Rain = () => {
   }, []);
 
   useFrame(() => {
-    if (!rainGeo.current) return;
+    if (!rainGeo.current || !rainGeo.current.attributes.position) return;
     const positions = rainGeo.current.attributes.position.array as Float32Array;
     const velocities = rainGeo.current.userData.velocities as number[];
     for (let i = 0; i < rainCount; i++) {
@@ -69,7 +69,7 @@ const Snow = () => {
   }, []);
 
   useFrame(({ clock }) => {
-    if (!snowGeo.current) return;
+    if (!snowGeo.current || !snowGeo.current.attributes.position) return;
     const time = clock.getElapsedTime();
     const positions = snowGeo.current.attributes.position.array as Float32Array;
     const { speeds, phases } = snowGeo.current.userData;
