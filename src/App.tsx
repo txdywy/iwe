@@ -3,6 +3,7 @@ import { useStore } from './store/useStore';
 import { WeatherScene } from './components/WeatherScene';
 import { LoadingScreen } from './components/LoadingScreen';
 import { VibeWidget } from './components/VibeWidget';
+import { ChiikawaMascot } from './components/ChiikawaMascot';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const getWeatherEmoji = (code: number) => {
@@ -63,8 +64,9 @@ function App() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="flex flex-col gap-1 sm:gap-2 pointer-events-auto items-center text-center md:items-start md:text-left mt-0 shrink-0"
+              className="relative flex flex-col gap-1 sm:gap-2 pointer-events-auto items-center text-center md:items-start md:text-left mt-0 shrink-0"
             >
+              <ChiikawaMascot />
               <h1 className="text-8xl md:text-9xl font-extralight tracking-tighter text-white drop-shadow-2xl m-0 leading-none">
                 {weatherData?.temperature.toFixed(0)}°
               </h1>
