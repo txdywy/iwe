@@ -67,10 +67,21 @@ export const ChiikawaMascot = memo(({ variant = 'inline', className = '' }: Chii
         className,
       ].filter(Boolean).join(' ')}
     >
+      {!isDesktopDrift && (
+        <img
+          aria-hidden="true"
+          src={currentImage.src}
+          alt=""
+          className="mobile-mascot-edge-blur"
+        />
+      )}
       <img 
         src={currentImage.src}
         alt={currentImage.alt}
-        className="w-full h-full object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]"
+        className={[
+          'relative z-10 w-full h-full object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]',
+          !isDesktopDrift ? 'mobile-mascot-soft-edge' : '',
+        ].filter(Boolean).join(' ')}
       />
     </motion.button>
   );

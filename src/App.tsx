@@ -70,9 +70,9 @@ function App() {
         
         {/* Mobile-Only Location Pill Scroller (Top) */}
         {locations.length > 0 && (
-          <div className="md:hidden w-full flex flex-col gap-2 mt-2">
-             <div className="flex items-center justify-between">
-               <div className="overflow-x-auto no-scrollbar scroll-fade-x flex gap-2 py-1 px-1 flex-1 pr-2" role="listbox" aria-label="Locations">
+          <div className="md:hidden relative w-full flex flex-col gap-2 mt-2">
+             <div>
+               <div className="w-full overflow-x-auto no-scrollbar scroll-fade-x flex gap-2 py-1 px-1 pr-[92px]" role="listbox" aria-label="Locations">
                   {locations.map((loc, idx) => (
                     <LocationButton
                       key={loc.lat + '-' + loc.lon}
@@ -83,7 +83,7 @@ function App() {
                     />
                   ))}
                </div>
-               <div className="shrink-0 ml-2">
+               <div className="absolute right-0 top-1/2 z-40 -translate-y-1/2">
                  <ChiikawaMascot />
                </div>
              </div>
