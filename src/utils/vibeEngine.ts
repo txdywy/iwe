@@ -47,29 +47,29 @@ interface MusicBrainzRelease {
   id: string;
   title: string;
   'artist-credit'?: { artist: { name: string } }[];
-  'cover-art-archive'?: { front: boolean };
+  'release-group'?: { id: string };
 }
 
 const fetchMusic = async (query: string): Promise<VibeItem | undefined> => {
   try {
     const res = await fetch(
-      `https://musicbrainz.org/ws/2/release?query=${encodeURIComponent(query)}&fmt=json&limit=10`,
+      `https://musicbrainz.org/ws/2/release?query=${encodeURIComponent(query)}&fmt=json&limit=5`,
       { headers: { 'User-Agent': 'iWe-WeatherApp/1.0 (https://iwe.hackx64.eu.org)' } }
     );
     if (!res.ok) return undefined;
     const data = await res.json();
     const releases: MusicBrainzRelease[] = data.releases || [];
 
-    // Find first release that MusicBrainz confirms has a front cover
-    const withCover = releases.find(r => r['cover-art-archive']?.front === true);
-    const best = withCover || releases[0];
+    const best = releases[0];
     if (!best) return undefined;
 
     const artistName = best['artist-credit']?.[0]?.artist?.name || '';
-    // Direct URL — <img src> follows redirects without CORS; no HEAD fetch needed
-    const coverUrl = withCover
-      ? `https://coverartarchive.org/release/${best.id}/front-500`
-      : '';
+    // Use release-group ID if available, otherwise release ID.
+    // CoverArtArchive supports both.
+    const entityId = best['release-group']?.id || best.id;
+    const entityType = best['release-group']?.id ? 'release-group' : 'release';
+    
+    const coverUrl = `https://coverartarchive.org/${entityType}/${entityId}/front-500`;
 
     return {
       type: 'music',

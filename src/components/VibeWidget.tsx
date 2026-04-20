@@ -4,6 +4,19 @@ import type { VibeRecommendation } from '../utils/vibeEngine';
 
 const ShimmerImage = ({ src, alt }: { src: string; alt: string }) => {
   const [loaded, setLoaded] = useState(false);
+  const [hasError, setHasError] = useState(false);
+
+  if (hasError) {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center bg-white/5 border border-white/10 text-white/50 text-[10px] uppercase font-bold tracking-widest text-center shadow-inner gap-2 pt-2">
+        <motion.div animate={{ rotate: [0, 10, -10, 0] }} transition={{ repeat: Infinity, duration: 1.5, ease: 'easeInOut' }}>
+          🐇
+        </motion.div>
+        Oops
+      </div>
+    );
+  }
+
   return (
     <div className="relative w-full h-full overflow-hidden bg-white/5 rounded-xl border border-white/10 flex items-center justify-center">
       {/* Shimmer Effect */}
@@ -19,6 +32,7 @@ const ShimmerImage = ({ src, alt }: { src: string; alt: string }) => {
           src={src} 
           alt={alt} 
           onLoad={() => setLoaded(true)}
+          onError={() => setHasError(true)}
           className={`w-full h-full object-cover transition-opacity duration-700 ${loaded ? 'opacity-100' : 'opacity-0'}`} 
         />
       )}
