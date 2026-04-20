@@ -5,10 +5,10 @@ export interface GeoLocationResult {
   city?: string;
   country?: string;
   confidence: number;
-  ip?: string;
-  ipv4?: string;
-  ipv6?: string;
-  isp?: string;
+  ip?: string[];
+  ipv4?: string[];
+  ipv6?: string[];
+  isp?: string[];
 }
 
 const reverseGeocode = async (lat: number, lon: number): Promise<string | undefined> => {
@@ -45,20 +45,9 @@ export const getGPSLocation = (): Promise<GeoLocationResult | null> => {
 
 export const getIPLocation = async (ip?: string, source: 'ip'|'webrtc' = 'ip'): Promise<GeoLocationResult | null> => {
   try {
-    let ipv4: string | undefined;
-    let ipv6: string | undefined;
-    
-    if (!ip) {
-      const [v4Res, v6Res] = await Promise.allSettled([
-        fetch('https://api.ipify.org?format=json').then(r => r.json()),
-        fetch('https://api6.ipify.org?format=json').then(r => r.json())
-      ]);
-      if (v4Res.status === 'fulfilled' && v4Res.value?.ip) ipv4 = v4Res.value.ip;
-      if (v6Res.status === 'fulfilled' && v6Res.value?.ip) ipv6 = v6Res.value.ip;
-    }
-
-    const targetIp = ip || ipv4 || ipv6 || '';
-    const url = targetIp ? `https://ipapi.co/${targetIp}/json/` : 'https://ipapi.co/json/';
+    // ipapi.co/json/ returns the requester's IP info if no IP is provided.
+    // This saves 1-2 pre-fetch calls to ipify.
+    const url = ip ? `https://ipapi.co/${ip}/json/` : 'https://ipapi.co/json/';
     const res = await fetch(url);
     if (!res.ok) return null;
     const data = await res.json();
@@ -71,10 +60,10 @@ export const getIPLocation = async (ip?: string, source: 'ip'|'webrtc' = 'ip'): 
       city: data.city,
       country: data.country_name,
       confidence: source === 'webrtc' ? 90 : 80,
-      ip: ip || targetIp,
-      ipv4,
-      ipv6,
-      isp: data.org
+      ip: [data.ip],
+      ipv4: data.version === 'IPv4' ? [data.ip] : [],
+      ipv6: data.version === 'IPv6' ? [data.ip] : [],
+      isp: [data.org]
     };
   } catch {
     return null;
@@ -95,21 +84,32 @@ export const getDomesticIPLocation = async (): Promise<GeoLocationResult | null>
     const city = p === c ? p : `${p} ${c}`;
     const isp = data.data.location[4] || 'Domestic Node';
     
-    // We cannot easily get exact lat/lon from ipip json alone, but we can set a dummy or use reverse lookup if needed.
-    // For Vibe purposes, we'll map a basic central coordinate or let it just be an extra location badge.
+    // Low confidence for domestic IP because lat/lon is just a central point estimate.
     return {
       source: 'ip (domestic)',
       lat: 35.8617,
       lon: 104.1954, // central China roughly
       city: city || 'Domestic',
       country: 'China',
-      confidence: 79,
-      ip: data.data.ip,
-      isp: isp
+      confidence: 30, // Lowered from 79
+      ip: [data.data.ip],
+      isp: [isp]
     };
   } catch {
     return null;
   }
+};
+
+const isPrivateIP = (ip: string): boolean => {
+  if (ip.startsWith('192.168.') || ip.startsWith('10.')) return true;
+  if (ip.startsWith('172.')) {
+    const parts = ip.split('.');
+    if (parts.length >= 2) {
+      const secondOctet = parseInt(parts[1], 10);
+      return secondOctet >= 16 && secondOctet <= 31;
+    }
+  }
+  return false;
 };
 
 export const getWebRTCLocation = (): Promise<GeoLocationResult | null> => {
@@ -128,9 +128,9 @@ export const getWebRTCLocation = (): Promise<GeoLocationResult | null> => {
           peer.close();
           const ip = match[1];
           // Local IP mask check
-          if (ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.')) {
+          if (isPrivateIP(ip)) {
             // Unlikely to geocode local IPs via ipapi.co
-            resolve({ source: 'webrtc (local)', lat: 0, lon: 0, city: 'Local Network', confidence: 10, ip: ip, isp: 'LAN' });
+            resolve({ source: 'webrtc (local)', lat: 0, lon: 0, city: 'Local Network', confidence: 10, ip: [ip], isp: ['LAN'] });
           } else {
             const loc = await getIPLocation(ip, 'webrtc');
             resolve(loc);
@@ -241,18 +241,18 @@ export const getBestLocations = async (onProgress?: (msg: string) => void): Prom
     } else {
       // It is duplicate. Append source info so user knows the power of our sniffer.
       isDuplicate.source = `${isDuplicate.source}+${loc.source}`;
-      if (loc.ip && !isDuplicate.ip?.includes(loc.ip)) {
-        isDuplicate.ip = isDuplicate.ip ? `${isDuplicate.ip}, ${loc.ip}` : loc.ip;
-      }
-      if (loc.ipv4 && !isDuplicate.ipv4?.includes(loc.ipv4)) {
-        isDuplicate.ipv4 = isDuplicate.ipv4 ? `${isDuplicate.ipv4}, ${loc.ipv4}` : loc.ipv4;
-      }
-      if (loc.ipv6 && !isDuplicate.ipv6?.includes(loc.ipv6)) {
-        isDuplicate.ipv6 = isDuplicate.ipv6 ? `${isDuplicate.ipv6}, ${loc.ipv6}` : loc.ipv6;
-      }
-      if (loc.isp && !isDuplicate.isp?.includes(loc.isp)) {
-        isDuplicate.isp = isDuplicate.isp ? `${isDuplicate.isp}, ${loc.isp}` : loc.isp;
-      }
+      
+      const appendUnique = (arr: string[] | undefined, newItems: string[] | undefined) => {
+        if (!newItems) return arr;
+        const current = new Set(arr || []);
+        newItems.forEach(item => current.add(item));
+        return Array.from(current);
+      };
+
+      isDuplicate.ip = appendUnique(isDuplicate.ip, loc.ip);
+      isDuplicate.ipv4 = appendUnique(isDuplicate.ipv4, loc.ipv4);
+      isDuplicate.ipv6 = appendUnique(isDuplicate.ipv6, loc.ipv6);
+      isDuplicate.isp = appendUnique(isDuplicate.isp, loc.isp);
     }
   }
 

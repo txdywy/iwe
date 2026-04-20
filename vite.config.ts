@@ -5,4 +5,16 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   base: './',
+  build: {
+    target: 'es2023',
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('three') || id.includes('@react-three')) {
+            return 'three-bundle';
+          }
+        },
+      },
+    },
+  },
 })

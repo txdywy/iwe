@@ -1,10 +1,14 @@
-import React, { useState } from 'react';
+import { useState, useCallback, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { VibeRecommendation } from '../utils/vibeEngine';
+import { useStore } from '../store/useStore';
 
 const ShimmerImage = ({ src, alt }: { src: string; alt: string }) => {
   const [loaded, setLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
+
+  const handleLoad = useCallback(() => setLoaded(true), []);
+  const handleError = useCallback(() => setHasError(true), []);
 
   if (hasError) {
     return (
@@ -31,8 +35,8 @@ const ShimmerImage = ({ src, alt }: { src: string; alt: string }) => {
         <img 
           src={src} 
           alt={alt} 
-          onLoad={() => setLoaded(true)}
-          onError={() => setHasError(true)}
+          onLoad={handleLoad}
+          onError={handleError}
           className={`w-full h-full object-cover transition-opacity duration-700 ${loaded ? 'opacity-100' : 'opacity-0'}`} 
         />
       )}
@@ -48,8 +52,14 @@ interface VibeWidgetProps {
   loading: boolean;
 }
 
-export const VibeWidget: React.FC<VibeWidgetProps> = ({ vibeData, loading }) => {
+export const VibeWidget = memo(({ vibeData, loading }: VibeWidgetProps) => {
   const [activeTab, setActiveTab] = useState<'music' | 'movie' | 'book'>('music');
+  const setActiveLocation = useStore(s => s.setActiveLocation);
+  const activeLocationIndex = useStore(s => s.activeLocationIndex);
+
+  const handleRetry = useCallback(() => {
+    setActiveLocation(activeLocationIndex);
+  }, [setActiveLocation, activeLocationIndex]);
 
   if (loading) {
     return (
@@ -135,11 +145,16 @@ export const VibeWidget: React.FC<VibeWidgetProps> = ({ vibeData, loading }) => 
                <motion.span animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 1.5, repeat: Infinity }}>
                  Scanning database...
                </motion.span>
-               <span className="text-[8px] opacity-50 mt-1">Retry triggered</span>
+               <button 
+                onClick={handleRetry}
+                className="mt-1 text-[8px] bg-white/10 hover:bg-white/20 px-2 py-1 rounded-full transition-colors border border-white/5"
+               >
+                 Trigger Manual Scan
+               </button>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
     </div>
   );
-};
+});

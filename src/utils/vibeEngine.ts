@@ -50,10 +50,11 @@ interface MusicBrainzRelease {
   'release-group'?: { id: string };
 }
 
-const fetchMusic = async (query: string): Promise<VibeItem | undefined> => {
+const fetchMusic = async (query: string, signal?: AbortSignal): Promise<VibeItem | undefined> => {
   try {
     const res = await fetch(
-      `https://musicbrainz.org/ws/2/release?query=${encodeURIComponent(query)}&fmt=json&limit=5`
+      `https://musicbrainz.org/ws/2/release?query=${encodeURIComponent(query)}&fmt=json&limit=5`,
+      { signal }
     );
     if (!res.ok) return undefined;
     const data = await res.json();
@@ -86,24 +87,28 @@ interface WikiSearchPage {
   key: string;
 }
 
-const fetchMovie = async (query: string): Promise<VibeItem | undefined> => {
+const fetchMovie = async (query: string, signal?: AbortSignal): Promise<VibeItem | undefined> => {
   try {
     // Step 1: Search Wikipedia for the film page
     const searchRes = await fetch(
-      `https://en.wikipedia.org/w/rest.php/v1/search/page?q=${encodeURIComponent(query + ' film')}&limit=5`
+      `https://en.wikipedia.org/w/rest.php/v1/search/page?q=${encodeURIComponent(query + ' film')}&limit=5`,
+      { signal }
     );
     if (!searchRes.ok) return undefined;
     const searchData = await searchRes.json();
     const pages: WikiSearchPage[] = searchData.pages || [];
 
-    for (const page of pages) {
-      // Step 2: Get summary + thumbnail
-      const summaryRes = await fetch(
-        `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(page.key)}`
-      );
-      if (!summaryRes.ok) continue;
-      const summary = await summaryRes.json();
-      if (summary.thumbnail?.source) {
+    // Step 2: Fetch summaries in parallel to avoid serial fetch waterfall
+    const results = await Promise.allSettled(
+      pages.map(page => 
+        fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(page.key)}`, { signal })
+          .then(res => res.ok ? res.json() : null)
+      )
+    );
+
+    for (const result of results) {
+      if (result.status === 'fulfilled' && result.value?.thumbnail?.source) {
+        const summary = result.value;
         return {
           type: 'movie',
           title: summary.title || query,
@@ -119,10 +124,10 @@ const fetchMovie = async (query: string): Promise<VibeItem | undefined> => {
   return undefined;
 };
 
-const fetchBook = async (query: string): Promise<VibeItem | undefined> => {
+const fetchBook = async (query: string, signal?: AbortSignal): Promise<VibeItem | undefined> => {
   try {
     // OpenLibrary Search API (CORS friendly)
-    const res = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=1`);
+    const res = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=1`, { signal });
     if (!res.ok) return undefined;
     const data = await res.json();
     const doc = data.docs?.[0];
@@ -147,20 +152,30 @@ const fetchBook = async (query: string): Promise<VibeItem | undefined> => {
   return undefined;
 };
 
+const fisherYatesShuffle = <T>(array: T[]): T[] => {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+};
+
 export const generateVibe = async (
-  condition: 'Clear' | 'Clouds' | 'Rain' | 'Snow' | 'Thunderstorm'
+  condition: 'Clear' | 'Clouds' | 'Rain' | 'Snow' | 'Thunderstorm',
+  signal?: AbortSignal
 ): Promise<VibeRecommendation> => {
   const seeds = seedLibrary[condition] || seedLibrary.Clear;
 
   // Retry wrapper: tries different random seeds up to `retries` times
   const fetchWithRetry = async <T>(
-    fetcher: (q: string) => Promise<T | undefined>,
+    fetcher: (q: string, s?: AbortSignal) => Promise<T | undefined>,
     seedArray: string[],
     retries = 3
   ): Promise<T | undefined> => {
-    const shuffled = [...seedArray].sort(() => Math.random() - 0.5);
+    const shuffled = fisherYatesShuffle(seedArray);
     for (let i = 0; i < Math.min(retries, shuffled.length); i++) {
-      const result = await fetcher(shuffled[i]);
+      const result = await fetcher(shuffled[i], signal);
       if (result) return result;
     }
     return undefined;

@@ -28,30 +28,22 @@ const mapWeatherCode = (code: number): WeatherData['condition'] => {
   return 'Clear';
 }
 
-const fetchOpenMeteo = async (lat: number, lon: number): Promise<WeatherData | null> => {
+const fetchOpenMeteo = async (lat: number, lon: number, signal?: AbortSignal): Promise<WeatherData | null> => {
   try {
-    // Main weather API + 14-day forecasts
-    // Using daily=weather_code,temperature_2m_max,temperature_2m_min,uv_index_max
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,relative_humidity_2m&hourly=precipitation_probability&daily=weather_code,temperature_2m_max,temperature_2m_min,uv_index_max&timezone=auto&forecast_days=14`;
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const data = await res.json();
-    
-    // Air Quality API
-    let aqi: number | undefined = undefined;
-    try {
-      const aqiRes = await fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=european_aqi`);
-      if (aqiRes.ok) {
-        const aqiData = await aqiRes.json();
-        aqi = aqiData.current?.european_aqi;
-      }
-    } catch {
-      // Ignore AQI fetch errors
-    }
+    const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,relative_humidity_2m&hourly=precipitation_probability&daily=weather_code,temperature_2m_max,temperature_2m_min,uv_index_max&timezone=auto&forecast_days=14`;
+    const aqiUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=european_aqi`;
 
+    // Parallelize weather and AQI calls
+    const [weatherRes, aqiRes] = await Promise.all([
+      fetch(weatherUrl, { signal }).then(r => r.ok ? r.json() : null),
+      fetch(aqiUrl, { signal }).then(r => r.ok ? r.json() : null).catch(() => null)
+    ]);
+
+    if (!weatherRes || !weatherRes.current) return null;
+    const aqi = aqiRes?.current?.european_aqi;
+
+    const data = weatherRes;
     const current = data.current;
-    if (!current) return null;
-
     const condition = mapWeatherCode(current.weather_code);
 
     const forecastList: DailyForecast[] = [];
@@ -82,18 +74,21 @@ const fetchOpenMeteo = async (lat: number, lon: number): Promise<WeatherData | n
   }
 };
 
-interface WttrForecast {
+interface WttrDay {
   date: string;
   maxtempC: string;
   mintempC: string;
+  hourly: {
+    weatherDesc: { value: string }[];
+  }[];
 }
 
-const fetchWttrIn = async (city?: string, lat?: number, lon?: number): Promise<WeatherData | null> => {
+const fetchWttrIn = async (city?: string, lat?: number, lon?: number, signal?: AbortSignal): Promise<WeatherData | null> => {
   try {
     const target = city ? city : (lat !== undefined && lon !== undefined ? `${lat},${lon}` : '');
     if (!target) return null;
 
-    const res = await fetch(`https://wttr.in/${encodeURIComponent(target)}?format=j1`);
+    const res = await fetch(`https://wttr.in/${encodeURIComponent(target)}?format=j1`, { signal });
     if (!res.ok) return null;
     const data = await res.json();
     
@@ -107,13 +102,15 @@ const fetchWttrIn = async (city?: string, lat?: number, lon?: number): Promise<W
     if (desc.includes('thunder') || desc.includes('storm')) condition = 'Thunderstorm';
 
     const forecastList: DailyForecast[] = [];
-    data.weather?.forEach((day: WttrForecast) => {
-      // Map basic wttr descriptions to an approximate WMO code for consistent emoji mapping
+    data.weather?.forEach((day: WttrDay) => {
+      // Use mid-day (hourly index 4) description for better daily representation
+      const dayDesc = (day.hourly?.[4]?.weatherDesc?.[0]?.value || day.hourly?.[0]?.weatherDesc?.[0]?.value || desc).toLowerCase();
+      
       let wc = 0;
-      if (desc.includes('thunder') || desc.includes('storm')) wc = 95;
-      else if (desc.includes('snow') || desc.includes('ice')) wc = 71;
-      else if (desc.includes('rain') || desc.includes('drizzle') || desc.includes('shower')) wc = 61;
-      else if (desc.includes('cloud') || desc.includes('overcast')) wc = 3;
+      if (dayDesc.includes('thunder') || dayDesc.includes('storm')) wc = 95;
+      else if (dayDesc.includes('snow') || dayDesc.includes('ice')) wc = 71;
+      else if (dayDesc.includes('rain') || dayDesc.includes('drizzle') || dayDesc.includes('shower')) wc = 61;
+      else if (dayDesc.includes('cloud') || dayDesc.includes('overcast')) wc = 3;
 
       forecastList.push({
         time: day.date,
@@ -137,16 +134,16 @@ const fetchWttrIn = async (city?: string, lat?: number, lon?: number): Promise<W
   }
 };
 
-export const getAggregatedWeather = async (location: GeoLocationResult, onProgress?: (msg: string) => void): Promise<WeatherData | null> => {
+export const getAggregatedWeather = async (location: GeoLocationResult, onProgress?: (msg: string) => void, signal?: AbortSignal): Promise<WeatherData | null> => {
   if (onProgress) onProgress(`[METEO] Parsing atmospheric layers for [${location.lat.toFixed(2)}, ${location.lon.toFixed(2)}]...`);
-  const meteo = await fetchOpenMeteo(location.lat, location.lon);
+  const meteo = await fetchOpenMeteo(location.lat, location.lon, signal);
   if (meteo) {
     if (onProgress) onProgress(`[METEO] Synced! Condition: ${meteo.condition}, ${meteo.temperature}°`);
     return meteo;
   }
 
   if (onProgress) onProgress(`[WTTR] Fallback parsing waterfall metrics...`);
-  const wttr = await fetchWttrIn(location.city, location.lat, location.lon);
+  const wttr = await fetchWttrIn(location.city, location.lat, location.lon, signal);
   if (wttr) {
     if (onProgress) onProgress(`[WTTR] Synced! Condition: ${wttr.condition}, ${wttr.temperature}°`);
     return wttr;

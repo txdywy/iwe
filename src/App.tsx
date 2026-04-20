@@ -1,14 +1,17 @@
-import { useEffect } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import { useStore } from './store/useStore';
-import { WeatherScene } from './components/WeatherScene';
+import { useShallow } from 'zustand/shallow';
 import { LoadingScreen } from './components/LoadingScreen';
-import { VibeWidget } from './components/VibeWidget';
 import { ChiikawaMascot } from './components/ChiikawaMascot';
-import { HackerNewsWidget } from './components/HackerNewsWidget';
-import { IPDataWidget } from './components/IPDataWidget';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MetricCard, ForecastCard, LocationButton } from './components/WeatherUIComponents';
 import { getWeatherEmoji } from './utils/weatherIcons';
+
+// Lazy load non-critical components
+const WeatherScene = lazy(() => import('./components/WeatherScene').then(m => ({ default: m.WeatherScene })));
+const VibeWidget = lazy(() => import('./components/VibeWidget').then(m => ({ default: m.VibeWidget })));
+const HackerNewsWidget = lazy(() => import('./components/HackerNewsWidget').then(m => ({ default: m.HackerNewsWidget })));
+const IPDataWidget = lazy(() => import('./components/IPDataWidget').then(m => ({ default: m.IPDataWidget })));
 
 function App() {
   const { 
@@ -21,7 +24,17 @@ function App() {
     error, 
     initApp, 
     setActiveLocation 
-  } = useStore();
+  } = useStore(useShallow((s) => ({
+    locations: s.locations,
+    activeLocationIndex: s.activeLocationIndex,
+    weatherData: s.weatherData,
+    vibeData: s.vibeData,
+    loading: s.loading,
+    vibeLoading: s.vibeLoading,
+    error: s.error,
+    initApp: s.initApp,
+    setActiveLocation: s.setActiveLocation
+  })));
 
   useEffect(() => {
     initApp();
@@ -35,7 +48,9 @@ function App() {
     return (
       <div className="relative flex h-screen w-screen flex-col items-center justify-center bg-black text-white p-6">
         <div className="absolute inset-0 -z-10 pointer-events-none opacity-50">
-          <WeatherScene condition="Clear" />
+          <Suspense fallback={null}>
+            <WeatherScene condition="Clear" />
+          </Suspense>
         </div>
         <h1 className="mb-4 text-3xl font-bold font-sans">Error</h1>
         <p className="text-red-400 text-center max-w-md">{error}</p>
@@ -56,7 +71,9 @@ function App() {
     <main className="relative min-h-screen w-full font-sans">
       {/* Weather Scene Fixed Background */}
       <div className="fixed inset-0 -z-10 pointer-events-none">
-        <WeatherScene condition={condition} />
+        <Suspense fallback={<div className="absolute inset-0 bg-gray-900" />}>
+          <WeatherScene condition={condition} />
+        </Suspense>
       </div>
 
       {/* Main content flow container */}
@@ -72,7 +89,6 @@ function App() {
                   source={loc.source}
                   isActive={idx === activeLocationIndex}
                   onClick={() => setActiveLocation(idx)}
-                  isMobile
                 />
               ))}
            </div>
@@ -87,7 +103,7 @@ function App() {
           </div>
 
           {/* Left Panel: Hero Temperature */}
-          <AnimatePresence mode="wait">
+          <AnimatePresence mode="popLayout">
             <motion.div 
               key={activeLocationIndex}
               initial={{ opacity: 0, y: 20 }}
@@ -146,7 +162,9 @@ function App() {
               </div>
             </div>
             
-            <VibeWidget vibeData={vibeData} loading={vibeLoading} />
+            <Suspense fallback={<div className="h-64 rounded-[24px] bg-white/5 animate-pulse" />}>
+              <VibeWidget vibeData={vibeData} loading={vibeLoading} />
+            </Suspense>
           </div>
         </div>
 
@@ -173,12 +191,16 @@ function App() {
 
         {/* Row 3: Hacker News Wide Module */}
         <div className="w-full max-w-[1400px]">
-          <HackerNewsWidget />
+          <Suspense fallback={<div className="h-48 rounded-[24px] bg-white/5 animate-pulse" />}>
+            <HackerNewsWidget />
+          </Suspense>
         </div>
 
         {/* Row 4: IP Data Module */}
         <div className="w-full max-w-[1400px]">
-          <IPDataWidget />
+          <Suspense fallback={<div className="h-32 rounded-[24px] bg-white/5 animate-pulse" />}>
+            <IPDataWidget />
+          </Suspense>
         </div>
 
       </div>

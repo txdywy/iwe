@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, memo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 
 interface HNStory {
@@ -11,45 +11,58 @@ interface HNStory {
   descendants: number; // comment count
 }
 
-export const HackerNewsWidget: React.FC = () => {
+export const HackerNewsWidget = memo(() => {
   const [stories, setStories] = useState<HNStory[]>([]);
   const [loading, setLoading] = useState(true);
-  const [now] = useState(() => Math.floor(Date.now() / 1000));
+  const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
 
-  const formatTime = (time: number) => {
+  const formatTime = useCallback((time: number) => {
     const diff = now - time;
-    if (diff < 3600) return `${Math.floor(diff / 60)}m`;
+    if (diff < 3600) return `${Math.floor(Math.max(1, diff / 60))}m`;
     if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
     return `${Math.floor(diff / 86400)}d`;
-  };
+  }, [now]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNow(Math.floor(Date.now() / 1000));
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
+    const controller = new AbortController();
 
     const fetchHN = async () => {
       try {
-        const res = await fetch('https://hacker-news.firebaseio.com/v0/topstories.json');
+        const res = await fetch('https://hacker-news.firebaseio.com/v0/topstories.json', { signal: controller.signal });
         const ids: number[] = await res.json();
         const top10 = ids.slice(0, 10);
 
-        const storyPromises = top10.map(async (id) => {
-          const sRes = await fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`);
-          const story: HNStory = await sRes.json();
-          return story;
-        });
+        const fetchedStories = await Promise.all(
+          top10.map(async (id) => {
+            const sRes = await fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`, { signal: controller.signal });
+            return await sRes.json();
+          })
+        );
 
-        const fetchedStories = await Promise.all(storyPromises);
         if (isMounted) {
           setStories(fetchedStories);
           setLoading(false);
         }
-      } catch {
-        if (isMounted) setLoading(false);
+      } catch (e) {
+        if (isMounted && !(e instanceof Error && e.name === 'AbortError')) {
+          setLoading(false);
+        }
       }
     };
 
     fetchHN();
-    return () => { isMounted = false; };
+    return () => { 
+      isMounted = false;
+      controller.abort();
+    };
   }, []);
 
   if (loading) {
@@ -114,4 +127,4 @@ export const HackerNewsWidget: React.FC = () => {
       </div>
     </div>
   );
-};
+});

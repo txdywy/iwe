@@ -1,8 +1,9 @@
-import React from 'react';
+import { memo } from 'react';
 import { useStore } from '../store/useStore';
+import { useShallow } from 'zustand/shallow';
 
-export const IPDataWidget: React.FC = () => {
-  const { locations } = useStore();
+export const IPDataWidget = memo(() => {
+  const { locations } = useStore(useShallow(s => ({ locations: s.locations })));
   
   const ipLocations = locations.filter(loc => loc.ip);
 
@@ -31,11 +32,11 @@ export const IPDataWidget: React.FC = () => {
             <div className="flex justify-between items-start gap-2">
               <div className="flex flex-col">
                 <span className="text-[#00ffcc]/90 text-sm font-mono tracking-tight break-all">
-                  {loc.ipv4 || loc.ip}
+                  {loc.ipv4?.join(', ') || loc.ip?.join(', ')}
                 </span>
-                {loc.ipv6 && loc.ipv6 !== loc.ipv4 && loc.ipv6 !== loc.ip && (
+                {loc.ipv6 && loc.ipv6.length > 0 && loc.ipv6[0] !== (loc.ipv4?.[0] || loc.ip?.[0]) && (
                   <span className="text-[#00ffcc]/60 text-[10px] font-mono tracking-tight break-all mt-0.5">
-                    {loc.ipv6}
+                    {loc.ipv6.join(', ')}
                   </span>
                 )}
               </div>
@@ -47,7 +48,7 @@ export const IPDataWidget: React.FC = () => {
             <div className="flex flex-col gap-1.5 mt-2">
               <div className="flex items-center gap-2 text-micro text-white/50 font-medium">
                 <span className="text-white/30 uppercase tracking-widest text-[9px] w-8">ISP</span>
-                <span className="truncate text-white/80">{loc.isp || 'Unknown'}</span>
+                <span className="truncate text-white/80">{loc.isp?.join(', ') || 'Unknown'}</span>
               </div>
               <div className="flex items-center gap-2 text-micro text-white/50 font-medium">
                 <span className="text-white/30 uppercase tracking-widest text-[9px] w-8">LOC</span>
@@ -61,4 +62,4 @@ export const IPDataWidget: React.FC = () => {
       </div>
     </div>
   );
-};
+});
