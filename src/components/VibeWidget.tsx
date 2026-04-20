@@ -53,7 +53,7 @@ export const VibeWidget: React.FC<VibeWidgetProps> = ({ vibeData, loading }) => 
 
   if (loading) {
     return (
-      <div className="w-full max-w-sm rounded-[32px] border border-white/20 bg-black/30 backdrop-blur-2xl p-5 shadow-2xl flex items-center justify-center min-h-[150px]">
+      <div className="w-full max-w-sm md:rounded-[32px] md:border md:border-white/20 md:bg-black/30 md:backdrop-blur-2xl md:p-5 md:shadow-2xl flex items-center justify-center min-h-[150px]">
         <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} className="w-6 h-6 border-2 border-white/50 border-t-white rounded-full" />
         <span className="ml-3 text-white/50 text-xs font-bold tracking-widest uppercase">Fetching Vibe...</span>
       </div>
@@ -65,7 +65,7 @@ export const VibeWidget: React.FC<VibeWidgetProps> = ({ vibeData, loading }) => 
   const currentItem = vibeData[activeTab];
 
   return (
-    <div className="w-full max-w-sm rounded-[32px] border border-white/20 bg-white/10 backdrop-blur-2xl px-5 pt-4 pb-5 shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] flex flex-col gap-4">
+    <div className="w-full max-w-sm md:rounded-[32px] md:border md:border-white/20 md:bg-white/10 md:backdrop-blur-2xl md:px-5 md:pt-4 md:pb-5 md:shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] flex flex-col gap-4">
       {/* Header Tabs */}
       <div className="flex justify-between items-center px-1">
         <h3 className="text-[11px] font-bold tracking-[0.2em] text-white/50 uppercase">Vibe Matches</h3>

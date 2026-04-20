@@ -160,7 +160,7 @@ function App() {
                   <span className="text-[10px] uppercase font-bold tracking-[0.18em] text-white/40">Forecast</span>
                   <div className="flex-1 h-px bg-white/10" />
                 </div>
-                <div className="overflow-x-auto no-scrollbar scroll-fade-x rounded-3xl border border-white/15 bg-black/40 backdrop-blur-2xl shadow-[0_4px_24px_rgba(0,0,0,0.4)] flex gap-2 p-4">
+                <div className="overflow-x-auto no-scrollbar scroll-fade-x flex gap-2 py-2">
                   {weatherData.forecast.map((fc, i) => (
                     <ForecastCard
                       key={i}
