@@ -69,7 +69,7 @@ export const HackerNewsWidget: React.FC = () => {
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-[#ff6600] animate-pulse shadow-[0_0_8px_rgba(255,102,0,0.8)]" />
-          <span className="text-[11px] uppercase font-black tracking-[0.25em] text-white/60">Hacker News Top 10</span>
+          <span className="text-micro uppercase font-black tracking-[0.25em] text-white/60">Hacker News Top 10</span>
         </div>
         <a 
           href="https://news.ycombinator.com" 

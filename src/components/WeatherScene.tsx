@@ -119,28 +119,32 @@ export const WeatherScene: React.FC<WeatherSceneProps> = ({ condition }) => {
   const isCloudy = condition === 'Clouds' || isRain || isSnow;
   const isStorm = condition === 'Thunderstorm';
   
-  const bgColor = condition === 'Clear' ? '#87CEEB' : 
-                  condition === 'Clouds' ? '#708090' : 
-                  condition === 'Thunderstorm' ? '#111116' : 
-                  condition === 'Snow' ? '#b5c6cc' :
+  // Use slightly darker, more saturated base colors so white text remains legible
+  const bgColor = condition === 'Clear' ? '#4A90E2' : // Darker sky blue
+                  condition === 'Clouds' ? '#5A6B7C' : 
+                  condition === 'Thunderstorm' ? '#0F172A' : 
+                  condition === 'Snow' ? '#78909C' : // Slate gray-blue
                   '#4a5568';
+
+  const hour = new Date().getHours();
+  const isNight = hour < 6 || hour > 18;
 
   return (
     <div className="absolute inset-0 -z-10 bg-gradient-to-b from-gray-900 to-black transition-colors duration-1000">
-      <Canvas camera={{ position: [0, 0, 100], fov: 60 }}>
+      <Canvas camera={{ position: [0, 0, 100], fov: 60 }} dpr={[1, 1.5]}>
         {/* Fog logic - Mist makes it much denser */}
         <fog attach="fog" args={[bgColor, 50, condition === 'Snow' ? 150 : 300]} />
-        <ambientLight intensity={condition === 'Clear' ? 1.0 : isStorm ? 0.1 : 0.4} />
-        <directionalLight position={[10, 100, 10]} intensity={isStorm ? 0.2 : 1} />
+        <ambientLight intensity={condition === 'Clear' ? 0.8 : isStorm ? 0.1 : 0.4} />
+        <directionalLight position={[10, 100, 10]} intensity={isStorm ? 0.2 : 0.8} />
         
-        {condition === 'Clear' && <Sky sunPosition={[100, 20, 100]} />}
-        {condition === 'Clear' && <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />}
+        {condition === 'Clear' && !isNight && <Sky sunPosition={[100, 20, 100]} />}
+        {condition === 'Clear' && isNight && <Stars radius={100} depth={50} count={3000} factor={4} saturation={0} fade speed={1} />}
         
         {isCloudy && (
           <group position={[0, 40, -50]}>
-            <Cloud opacity={isStorm ? 0.8 : 0.5} speed={isStorm ? 0.8 : 0.4} color={isStorm ? '#333333' : '#ffffff'} scale={5} segments={20} />
-            <Cloud position={[50, -20, -50]} opacity={isStorm ? 0.9 : 0.5} speed={0.2} color={isStorm ? '#222222' : '#ffffff'} scale={7} segments={20} />
-            <Cloud position={[-50, 10, -30]} opacity={isStorm ? 0.7 : 0.5} speed={0.3} color={isStorm ? '#444444' : '#ffffff'} scale={6} segments={20} />
+            <Cloud opacity={isStorm ? 0.8 : 0.4} speed={isStorm ? 0.8 : 0.4} color={isStorm ? '#333333' : '#ffffff'} scale={5} segments={10} />
+            <Cloud position={[50, -20, -50]} opacity={isStorm ? 0.9 : 0.4} speed={0.2} color={isStorm ? '#222222' : '#ffffff'} scale={7} segments={10} />
+            <Cloud position={[-50, 10, -30]} opacity={isStorm ? 0.7 : 0.4} speed={0.3} color={isStorm ? '#444444' : '#ffffff'} scale={6} segments={10} />
           </group>
         )}
         
@@ -150,6 +154,8 @@ export const WeatherScene: React.FC<WeatherSceneProps> = ({ condition }) => {
         
         <color attach="background" args={[bgColor]} />
       </Canvas>
+      {/* Fallback scrim to guarantee minimum text contrast on bright days */}
+      <div className="absolute inset-0 bg-black/20 pointer-events-none" />
     </div>
   );
 };

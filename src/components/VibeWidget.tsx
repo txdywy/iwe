@@ -68,7 +68,7 @@ export const VibeWidget: React.FC<VibeWidgetProps> = ({ vibeData, loading }) => 
     <div className="w-full max-w-sm md:rounded-[32px] md:border md:border-white/20 md:bg-white/10 md:backdrop-blur-2xl md:px-5 md:pt-4 md:pb-5 md:shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] flex flex-col gap-4">
       {/* Header Tabs */}
       <div className="flex justify-between items-center px-1">
-        <h3 className="text-[11px] font-bold tracking-[0.2em] text-white/50 uppercase">Vibe Matches</h3>
+        <h3 className="text-micro font-bold tracking-[0.2em] text-white/50 uppercase">Vibe Matches</h3>
         <div className="flex bg-black/20 rounded-full p-1 border border-white/10">
           {(['music', 'movie', 'book'] as const).map(tab => (
             <button
