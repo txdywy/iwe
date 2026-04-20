@@ -45,16 +45,18 @@ const pickRandom = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)
 // Fetch from open APIs
 const fetchITunes = async (query: string, media: 'music' | 'movie'): Promise<VibeItem | undefined> => {
   try {
-    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&media=${media}&limit=1`);
+    // iTunes movie search is strictly region-locked/flaky. We use soundtrack trick to get gorgeous movie covers.
+    const searchTerm = media === 'movie' ? `${query} soundtrack` : query;
+    const searchMedia = media === 'movie' ? 'music' : media;
+    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(searchTerm)}&media=${searchMedia}&limit=1`);
     if (!res.ok) return undefined;
     const data = await res.json();
     const item = data.results[0];
     if (item) {
-      // iTunes provides 100x100. Let's request better quality by string replace if needed, or 100x100 is fine.
       const hiResCover = item.artworkUrl100 ? item.artworkUrl100.replace('100x100bb', '600x600bb') : '';
       return {
         type: media,
-        title: item.trackName || item.collectionName || query,
+        title: media === 'movie' ? query : (item.trackName || item.collectionName || query),
         subtitle: item.artistName || '',
         coverUrl: hiResCover,
         link: item.trackViewUrl || item.collectionViewUrl
@@ -66,24 +68,25 @@ const fetchITunes = async (query: string, media: 'music' | 'movie'): Promise<Vib
   return undefined;
 };
 
-const fetchOpenLibrary = async (query: string): Promise<VibeItem | undefined> => {
+const fetchBook = async (query: string): Promise<VibeItem | undefined> => {
   try {
-    const res = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=1`);
+    const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=1`);
     if (!res.ok) return undefined;
     const data = await res.json();
-    const doc = data.docs[0];
-    if (doc) {
-      const coverUrl = doc.cover_i ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg` : `https://ui-avatars.com/api/?name=${encodeURIComponent(doc.title)}&background=random`;
+    const item = data.items?.[0]?.volumeInfo;
+    if (item) {
+      // Google books thumbnail is often http, need to upgrade intercept to https
+      const coverUrl = item.imageLinks?.thumbnail ? item.imageLinks.thumbnail.replace('http:', 'https:') : `https://ui-avatars.com/api/?name=${encodeURIComponent(item.title || query)}&background=random`;
       return {
         type: 'book',
-        title: doc.title,
-        subtitle: doc.author_name ? doc.author_name[0] : 'Unknown Author',
+        title: item.title || query,
+        subtitle: item.authors?.[0] || 'Unknown Author',
         coverUrl,
-        link: `https://openlibrary.org${doc.key}`
+        link: item.infoLink
       };
     }
   } catch (e) {
-    console.warn(`OpenLibrary fetch failed for ${query}`);
+    console.warn(`Book fetch failed for ${query}`);
   }
   return undefined;
 };
@@ -94,7 +97,7 @@ export const generateVibe = async (condition: 'Clear' | 'Clouds' | 'Rain' | 'Sno
   const [music, movie, book] = await Promise.all([
     fetchITunes(pickRandom(seeds.music), 'music'),
     fetchITunes(pickRandom(seeds.movie), 'movie'),
-    fetchOpenLibrary(pickRandom(seeds.book)),
+    fetchBook(pickRandom(seeds.book)),
   ]);
 
   return {
