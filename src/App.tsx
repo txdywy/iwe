@@ -49,14 +49,14 @@ function App() {
   };
 
   return (
-    <main className="relative h-screen w-screen overflow-hidden font-sans">
+    <main className="relative h-[100dvh] w-screen overflow-hidden font-sans">
       <WeatherScene condition={condition} />
 
       {/* Main Container */}
-      <div className="absolute inset-0 flex flex-col p-6 pt-12 sm:p-12 z-10 pointer-events-none pb-8 h-screen justify-between">
+      <div className="absolute inset-0 flex flex-col p-6 pt-12 sm:p-12 z-10 pointer-events-none pb-8 h-[100dvh] justify-between">
         
         {/* Top Header Row (Temp & Panels) */}
-        <div className="flex flex-col md:flex-row md:items-start md:justify-between w-full h-full md:h-auto gap-8">
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between w-full md:h-auto gap-4 md:gap-8 shrink-0 mt-4 md:mt-0">
           
           <AnimatePresence mode="wait">
             <motion.div 
@@ -67,7 +67,7 @@ function App() {
               className="relative flex flex-col gap-1 sm:gap-2 pointer-events-auto items-center text-center md:items-start md:text-left mt-0 shrink-0"
             >
               <ChiikawaMascot />
-              <h1 className="text-8xl md:text-9xl font-extralight tracking-tighter text-white drop-shadow-2xl m-0 leading-none">
+              <h1 className="text-8xl md:text-9xl font-extralight tracking-tighter text-white drop-shadow-2xl m-0 leading-none mt-4 md:mt-0">
                 {weatherData?.temperature.toFixed(0)}°
               </h1>
               <h2 className="text-4xl md:text-5xl font-medium text-white/95 drop-shadow-md m-0 mt-2 tracking-tight">
@@ -150,7 +150,7 @@ function App() {
         </div>
 
         {/* Mobile View: Bottom Sheet with everything combined */}
-        <div className="md:hidden flex flex-col w-full h-[50vh] mt-auto pointer-events-auto z-20 shrink-0 gap-4 overflow-y-auto no-scrollbar">
+        <div className="md:hidden flex flex-col w-full max-h-[55vh] mt-auto pointer-events-auto z-20 shrink gap-4 overflow-y-auto no-scrollbar pb-2 pt-2 mix-blend-normal">
           
           {/* Mobile Forecast */}
           {weatherData?.forecast && weatherData.forecast.length > 0 && (
