@@ -47,7 +47,7 @@ export const getIPLocation = async (ip?: string, source: 'ip'|'webrtc' = 'ip'): 
     const data = await res.json();
     if (data.error) return null;
     return {
-      source,
+      source: source === 'ip' ? 'ip (overseas)' as any : source,
       lat: data.latitude,
       lon: data.longitude,
       city: data.city,
@@ -55,6 +55,34 @@ export const getIPLocation = async (ip?: string, source: 'ip'|'webrtc' = 'ip'): 
       confidence: source === 'webrtc' ? 90 : 80,
     };
   } catch (error) {
+    return null;
+  }
+};
+
+export const getDomesticIPLocation = async (): Promise<GeoLocationResult | null> => {
+  try {
+    // ipip.net is a massive domestic router standard, almost universally hit via DIRECT proxy rules.
+    const res = await fetch('https://myip.ipip.net/json');
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.ret !== 'ok') return null;
+    
+    // Convert Chinese Province/City to a generic string (e.g. "China, Beijing")
+    const p = data.data.location[1];
+    const c = data.data.location[2];
+    const city = p === c ? p : `${p} ${c}`;
+    
+    // We cannot easily get exact lat/lon from ipip json alone, but we can set a dummy or use reverse lookup if needed.
+    // For Vibe purposes, we'll map a basic central coordinate or let it just be an extra location badge.
+    return {
+      source: 'ip (domestic)' as any,
+      lat: 35.8617,
+      lon: 104.1954, // central China roughly
+      city: city || 'Domestic Node',
+      country: 'China',
+      confidence: 79,
+    };
+  } catch {
     return null;
   }
 };
@@ -139,23 +167,28 @@ export const getBestLocations = async (onProgress?: (msg: string) => void): Prom
   if (onProgress) onProgress("Initializing multi-layer geographic probes...");
 
   // Parallelize fetch where possible without hanging indefinitely
-  const [gps, ip, webrtc] = await Promise.all([
+  const [gps, ip, webrtc, homeIp] = await Promise.all([
     getGPSLocation().then(res => {
       if (res && onProgress) onProgress(`[GPS] Satellite lock: ${res.city || 'Coordinates acquired'}`);
       return res;
     }),
     getIPLocation().then(res => {
-      if (res && onProgress) onProgress(`[IP] Node traced via Backbone: ${res.city || 'Unknown'}`);
+      if (res && onProgress) onProgress(`[IP-WAN] Proxy node traced: ${res.city || 'Unknown'}`);
       return res;
     }),
     getWebRTCLocation().then(res => {
       if (res && onProgress) onProgress(`[STUN] WebRTC proxy bypassed: ${res.city || 'Unknown'}`);
       return res;
     }),
+    getDomesticIPLocation().then(res => {
+      if (res && onProgress) onProgress(`[IP-LAN] Domestic direct route: ${res.city || 'Unknown'}`);
+      return res;
+    }),
   ]);
 
   if (gps) locations.push(gps);
   if (ip) locations.push(ip);
+  if (homeIp) locations.push(homeIp);
   if (webrtc) locations.push(webrtc);
 
   const l10n = getLanguageLocation();
