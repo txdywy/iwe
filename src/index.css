@@ -13,3 +13,26 @@
   @apply w-screen h-screen m-0 p-0 overflow-hidden relative;
 }
 
+/* Mobile bottom sheet: thin, glowing custom scrollbar */
+.mobile-sheet {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.2) transparent;
+}
+.mobile-sheet::-webkit-scrollbar {
+  width: 3px;
+}
+.mobile-sheet::-webkit-scrollbar-track {
+  background: transparent;
+}
+.mobile-sheet::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.25);
+  border-radius: 99px;
+}
+
+/* Horizontal forecast scroll indicator fades */
+.scroll-fade-x {
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%);
+}

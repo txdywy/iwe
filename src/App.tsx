@@ -149,52 +149,75 @@ function App() {
            )}
         </div>
 
-        {/* Mobile View: Bottom Sheet with everything combined */}
-        <div className="md:hidden flex flex-col w-full max-h-[50vh] mt-auto pointer-events-auto z-20 shrink gap-4 overflow-y-auto no-scrollbar pb-6 pt-2 mix-blend-normal">
-          
-          {/* Mobile Forecast */}
-          {weatherData?.forecast && weatherData.forecast.length > 0 && (
-             <div className="w-full overflow-x-auto no-scrollbar rounded-3xl border border-white/20 bg-black/30 backdrop-blur-2xl p-5 shadow-2xl flex gap-4 shrink-0">
-                {weatherData.forecast.map((fc, i) => (
-                  <div key={i} className="flex flex-col items-center justify-center shrink-0 w-16 space-y-2">
-                    <span className="text-white/70 text-xs font-medium whitespace-nowrap">{formatDate(fc.time)}</span>
-                    <span className="text-2xl filter drop-shadow-md">{getWeatherEmoji(fc.weatherCode)}</span>
-                    <div className="flex flex-col items-center text-white text-sm">
-                      <span className="font-semibold">{fc.maxTemp.toFixed(0)}°</span>
-                      <span className="opacity-50 text-xs">{fc.minTemp.toFixed(0)}°</span>
-                    </div>
-                  </div>
-                ))}
-             </div>
-           )}
+        {/* ── Mobile Bottom Sheet ── (md:hidden) */}
+        <div className="md:hidden flex flex-col w-full mt-auto pointer-events-auto z-20 shrink-0 gap-3 pb-6">
 
-           {/* Mobile Location Selector */}
-           <div className="w-full rounded-3xl border border-white/20 bg-black/30 p-5 backdrop-blur-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] shrink-0">
-              <h3 className="mb-4 text-[11px] font-bold tracking-[0.2em] text-white/50 text-left uppercase pl-2">
-                Locations
-              </h3>
-              <div className="flex flex-col gap-2">
+          {/* Pull indicator bar */}
+          <div className="flex justify-center pt-1 pb-0">
+            <motion.div
+              animate={{ scaleX: [1, 0.7, 1], opacity: [0.4, 0.7, 0.4] }}
+              transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+              className="w-10 h-1 rounded-full bg-white/40"
+            />
+          </div>
+
+          {/* Scrollable stack */}
+          <div className="flex flex-col gap-3 overflow-y-auto mobile-sheet max-h-[52vh] px-1">
+
+            {/* 1. Vibe Widget — full width on mobile */}
+            <div className="shrink-0 w-full">
+              <VibeWidget vibeData={vibeData} loading={vibeLoading} />
+            </div>
+
+            {/* 2. Forecast horizontal scroll */}
+            {weatherData?.forecast && weatherData.forecast.length > 0 && (
+              <div className="shrink-0 w-full">
+                {/* Card header */}
+                <div className="flex items-center gap-2 mb-2 px-1">
+                  <span className="text-[10px] uppercase font-bold tracking-[0.18em] text-white/40">Forecast</span>
+                  <div className="flex-1 h-px bg-white/10" />
+                </div>
+                <div className="overflow-x-auto no-scrollbar scroll-fade-x rounded-3xl border border-white/15 bg-black/40 backdrop-blur-2xl shadow-[0_4px_24px_rgba(0,0,0,0.4)] flex gap-2 p-4">
+                  {weatherData.forecast.map((fc, i) => (
+                    <div key={i} className={`flex flex-col items-center shrink-0 w-[62px] gap-1.5 py-2 px-1 rounded-2xl transition-all ${i === 0 ? 'bg-white/15 border border-white/25' : ''}`}>
+                      <span className="text-white/60 text-[10px] font-semibold whitespace-nowrap">{formatDate(fc.time)}</span>
+                      <span className="text-2xl">{getWeatherEmoji(fc.weatherCode)}</span>
+                      <div className="flex flex-col items-center gap-0.5">
+                        <span className="text-white font-bold text-sm leading-none">{fc.maxTemp.toFixed(0)}°</span>
+                        <span className="text-white/35 text-[11px] leading-none">{fc.minTemp.toFixed(0)}°</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 3. Location Selector — horizontal pill carousel */}
+            <div className="shrink-0 w-full">
+              <div className="flex items-center gap-2 mb-2 px-1">
+                <span className="text-[10px] uppercase font-bold tracking-[0.18em] text-white/40">Locations</span>
+                <div className="flex-1 h-px bg-white/10" />
+              </div>
+              <div className="overflow-x-auto no-scrollbar scroll-fade-x flex gap-2 py-1">
                 {locations.map((loc, idx) => (
-                  <button
+                  <motion.button
                     key={idx}
                     onClick={() => setActiveLocation(idx)}
-                    className={`flex items-center justify-between rounded-2xl px-5 py-4 transition-all active:scale-95 duration-300 ${
+                    whileTap={{ scale: 0.93 }}
+                    className={`shrink-0 flex flex-col items-start gap-0.5 px-4 py-3 rounded-2xl border transition-all duration-300 ${
                       idx === activeLocationIndex
-                        ? 'bg-white/20 shadow-lg border border-white/40 text-white'
-                        : 'bg-white/5 hover:bg-white/10 border border-transparent text-white/70 hover:text-white'
+                        ? 'bg-white/25 border-white/40 text-white shadow-[0_0_16px_rgba(255,255,255,0.1)]'
+                        : 'bg-black/30 border-white/10 text-white/60 backdrop-blur-xl'
                     }`}
                   >
-                    <span className="font-medium text-base truncate pr-3">{loc.city || 'Resolving...'}</span>
-                    <span className="text-[10px] font-bold uppercase tracking-wider opacity-80 bg-black/40 px-2 py-1 flex-shrink-0 rounded-md">
-                      {loc.source}
-                    </span>
-                  </button>
+                    <span className="font-semibold text-sm whitespace-nowrap max-w-[120px] truncate">{loc.city || '...'}</span>
+                    <span className="text-[9px] font-bold uppercase tracking-widest opacity-60">{loc.source}</span>
+                  </motion.button>
                 ))}
               </div>
             </div>
 
-            <VibeWidget vibeData={vibeData} loading={vibeLoading} />
-
+          </div>
         </div>
 
       </div>
