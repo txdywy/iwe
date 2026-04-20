@@ -31,7 +31,7 @@ export const useStore = create<AppState>((set, get) => ({
   
   initApp: async () => {
     set({ loading: true, error: null, loadingLogs: ['Initializing deep-scan telemetry...'] });
-    const log = (msg: string) => set((s) => ({ loadingLogs: [...s.loadingLogs, msg] }));
+    const log = (msg: string) => set((s) => ({ loadingLogs: [...s.loadingLogs, msg].slice(-20) }));
 
     try {
       const locations = await getBestLocations(log);
