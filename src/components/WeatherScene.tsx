@@ -1,7 +1,6 @@
 import { useRef, memo, useState, useEffect, Component } from 'react';
 import type { ReactNode, ErrorInfo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { Stars, Cloud, Sky } from '@react-three/drei';
 import { PointLight, MathUtils, ShaderMaterial } from 'three';
 import type { WeatherCondition } from '../types/weather';
 
@@ -29,6 +28,58 @@ interface WeatherSceneProps {
   condition: WeatherCondition;
   timezone?: string;
 }
+
+const Stars = memo(() => {
+  const [positions] = useState(() => {
+    const count = 1200;
+    const pos = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++) {
+      const radius = 80 + Math.random() * 180;
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(Math.random() * 2 - 1);
+      pos[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
+      pos[i * 3 + 1] = radius * Math.cos(phi);
+      pos[i * 3 + 2] = radius * Math.sin(phi) * Math.sin(theta);
+    }
+    return pos;
+  });
+
+  return (
+    <points>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+      </bufferGeometry>
+      <pointsMaterial color="#ffffff" size={0.7} sizeAttenuation transparent opacity={0.85} />
+    </points>
+  );
+});
+
+const CloudCluster = memo(({
+  position = [0, 0, 0],
+  scale = 1,
+  color,
+  opacity,
+}: {
+  position?: [number, number, number];
+  scale?: number;
+  color: string;
+  opacity: number;
+}) => (
+  <group position={position} scale={scale}>
+    {[
+      [-3, 0, 0, 2.6],
+      [0, 0.4, 0, 3.2],
+      [3, -0.1, 0, 2.4],
+      [-0.8, 1.6, -0.2, 2.5],
+      [1.8, 1.2, 0.2, 2.1],
+    ].map(([x, y, z, radius], index) => (
+      <mesh key={index} position={[x, y, z]}>
+        <sphereGeometry args={[radius, 18, 12]} />
+        <meshStandardMaterial color={color} transparent opacity={opacity} depthWrite={false} />
+      </mesh>
+    ))}
+  </group>
+));
 
 const Rain = () => {
   const rainCount = 5000;
@@ -205,19 +256,28 @@ export const WeatherScene = memo(({ condition, timezone }: WeatherSceneProps) =>
   return (
     <WeatherSceneErrorBoundary bgColor={bgColor}>
       <div className="absolute inset-0 -z-10 bg-gradient-to-b from-gray-900 to-black transition-colors duration-1000">
-        <Canvas camera={{ position: [0, 0, 100], fov: 60 }} dpr={[1, 1]}>
+        <Canvas
+          camera={{ position: [0, 0, 100], fov: 60 }}
+          dpr={[1, 1]}
+          fallback={<div className="absolute inset-0" style={{ background: bgColor }} />}
+        >
           <fog attach="fog" args={[bgColor, 50, condition === 'Snow' ? 150 : 300]} />
           <ambientLight intensity={condition === 'Clear' ? 0.8 : isStorm ? 0.1 : 0.4} />
           <directionalLight position={[10, 100, 10]} intensity={isStorm ? 0.2 : 0.8} />
 
-          {condition === 'Clear' && !isNight && <Sky sunPosition={[100, 20, 100]} />}
-          {condition === 'Clear' && isNight && <Stars radius={100} depth={50} count={3000} factor={4} saturation={0} fade speed={1} />}
+          {condition === 'Clear' && !isNight && (
+            <mesh position={[70, 35, -120]}>
+              <sphereGeometry args={[12, 32, 16]} />
+              <meshBasicMaterial color="#fff7c2" />
+            </mesh>
+          )}
+          {condition === 'Clear' && isNight && <Stars />}
 
           {isCloudy && (
             <group position={[0, 40, -50]}>
-              <Cloud opacity={isStorm ? 0.8 : 0.4} speed={isStorm ? 0.8 : 0.4} color={isStorm ? '#333333' : '#ffffff'} scale={5} segments={5} />
-              <Cloud position={[50, -20, -50]} opacity={isStorm ? 0.9 : 0.4} speed={0.2} color={isStorm ? '#222222' : '#ffffff'} scale={7} segments={5} />
-              <Cloud position={[-50, 10, -30]} opacity={isStorm ? 0.7 : 0.4} speed={0.3} color={isStorm ? '#444444' : '#ffffff'} scale={6} segments={5} />
+              <CloudCluster opacity={isStorm ? 0.75 : 0.4} color={isStorm ? '#333333' : '#ffffff'} scale={5} />
+              <CloudCluster position={[50, -20, -50]} opacity={isStorm ? 0.85 : 0.4} color={isStorm ? '#222222' : '#ffffff'} scale={7} />
+              <CloudCluster position={[-50, 10, -30]} opacity={isStorm ? 0.65 : 0.4} color={isStorm ? '#444444' : '#ffffff'} scale={6} />
             </group>
           )}
 

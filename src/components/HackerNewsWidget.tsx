@@ -46,10 +46,11 @@ export const HackerNewsWidget = memo(() => {
           'https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage=10',
           { signal: controller.signal }
         );
+        if (!res.ok) throw new Error(`HN request failed: ${res.status}`);
         const data = await res.json();
 
-        if (isMounted && data.hits) {
-          setStories(data.hits);
+        if (isMounted) {
+          setStories(Array.isArray(data.hits) ? data.hits : []);
           setLoading(false);
         }
       } catch (e) {

@@ -26,6 +26,7 @@ const weatherCache = new Map<string, { data: WeatherData; timestamp: number }>()
 const vibeCache = new Map<string, { data: VibeRecommendation; timestamp: number }>();
 let currentAbortController: AbortController | null = null;
 let lastRequestId = '';
+let fallbackRequestCounter = 0;
 
 /** Evict expired entries from a cache map, and cap size. */
 const evictCache = <T>(cache: Map<string, { data: T; timestamp: number }>) => {
@@ -95,6 +96,14 @@ const resetAbort = (): AbortSignal => {
   return currentAbortController.signal;
 };
 
+const createRequestId = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  fallbackRequestCounter += 1;
+  return `${Date.now()}-${fallbackRequestCounter}`;
+};
+
 export const useStore = create<AppState>((set, get) => ({
   locations: [],
   activeLocationIndex: 0,
@@ -107,7 +116,7 @@ export const useStore = create<AppState>((set, get) => ({
 
   initApp: async () => {
     const signal = resetAbort();
-    const requestId = crypto.randomUUID();
+    const requestId = createRequestId();
     lastRequestId = requestId;
     set({ loading: true, error: null, loadingLogs: ['Initializing deep-scan telemetry...'] });
 
@@ -142,7 +151,7 @@ export const useStore = create<AppState>((set, get) => ({
     if (index < 0 || index >= locations.length) return;
 
     const signal = resetAbort();
-    const requestId = crypto.randomUUID();
+    const requestId = createRequestId();
     lastRequestId = requestId;
     // Clear stale vibeData immediately so UI doesn't flash old content
     set({ activeLocationIndex: index, loading: true, vibeLoading: true, vibeData: null, error: null });

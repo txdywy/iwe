@@ -7,11 +7,15 @@ export default defineConfig({
   base: './',
   build: {
     target: 'es2023',
+    chunkSizeWarningLimit: 950,
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes('three') || id.includes('@react-three')) {
-            return 'three-bundle';
+          if (id.includes('@react-three/fiber')) {
+            return 'react-three-fiber';
+          }
+          if (id.includes('/three/') || id.includes('\\three\\')) {
+            return 'three';
           }
           if (id.includes('framer-motion')) {
             return 'framer-motion';

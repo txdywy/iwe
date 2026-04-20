@@ -170,47 +170,50 @@ export const getWebRTCLocation = (signal?: AbortSignal): Promise<GeoLocationResu
   return new Promise((resolve) => {
     try {
       const peer = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
-      
-      let aborted = false;
+      let settled = false;
+      let localCandidate: GeoLocationResult | null = null;
+
+      const finish = (result: GeoLocationResult | null) => {
+        if (settled) return;
+        settled = true;
+        peer.close();
+        resolve(result);
+      };
+
       if (signal) {
         signal.addEventListener('abort', () => {
-          aborted = true;
-          peer.close();
-          resolve(null);
+          finish(null);
         }, { once: true });
       }
 
       peer.createDataChannel('');
       peer.createOffer().then(offer => {
-        if (aborted) return;
+        if (settled) return;
         return peer.setLocalDescription(offer);
-      }).catch(() => resolve(null));
+      }).catch(() => finish(null));
 
       peer.onicecandidate = async (event) => {
-        if (aborted) return;
-        if (!event || !event.candidate) return;
+        if (settled) return;
+        if (!event || !event.candidate) {
+          finish(localCandidate);
+          return;
+        }
         const candidate = event.candidate.candidate;
-        // Extract IP
+        if (candidate.includes('.local')) return;
+
         const ipRegex = /([0-9]{1,3}(\.[0-9]{1,3}){3}|[a-f0-9]{1,4}(:[a-f0-9]{1,4}){7})/;
         const match = ipRegex.exec(candidate);
         if (match) {
-          peer.close();
           const ip = match[1];
-          // Modern browsers use mDNS (.local) addresses — skip those
-          if (candidate.includes('.local')) {
-            resolve(null);
-            return;
-          }
-          // Local IP mask check
           if (isPrivateIP(ip)) {
-            resolve({ source: 'webrtc (local)', lat: 0, lon: 0, city: 'Local Network', confidence: 10, ip: [ip], isp: ['LAN'] });
+            localCandidate = { source: 'webrtc (local)', lat: 0, lon: 0, city: 'Local Network', confidence: 10, ip: [ip], isp: ['LAN'] };
           } else {
             const loc = await getIPLocation(ip, 'webrtc', signal);
-            resolve(loc);
+            finish(loc ?? localCandidate);
           }
         }
       };
-      setTimeout(() => { peer.close(); resolve(null); }, 3000);
+      setTimeout(() => finish(localCandidate), 3000);
     } catch {
       resolve(null);
     }
@@ -304,11 +307,6 @@ export const getBestLocations = async (onProgress?: (msg: string) => void, signa
   if (onProgress) onProgress("Cross-referencing and deduplicating coordinates...");
 
   // Normalize city name for dedup comparison
-  // Derive zh→en mapping from domesticCityCoords keys to avoid duplicate data
-  const zhToEn: Record<string, string> = Object.fromEntries(
-    Object.keys(domesticCityCoords).map(zh => [zh, zh.toLowerCase()])
-  );
-  // Add pinyin mappings for English matching
   const pinyinMap: Record<string, string> = {
     '北京': 'beijing', '上海': 'shanghai', '广州': 'guangzhou', '深圳': 'shenzhen',
     '杭州': 'hangzhou', '成都': 'chengdu', '武汉': 'wuhan', '南京': 'nanjing',
@@ -324,10 +322,6 @@ export const getBestLocations = async (onProgress?: (msg: string) => void, signa
     // Check if it's a Chinese name we can map to pinyin
     for (const [zh, pinyin] of Object.entries(pinyinMap)) {
       if (cleaned.includes(zh)) return pinyin;
-    }
-    // Also check zhToEn for exact Chinese character match
-    for (const [zh] of Object.entries(zhToEn)) {
-      if (cleaned.includes(zh)) return pinyinMap[zh] || zh;
     }
     // For multi-word names, take the first significant word
     return cleaned.split(/[\s,]+/)[0];

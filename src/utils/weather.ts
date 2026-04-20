@@ -30,6 +30,12 @@ const mapWeatherCode = (code: number): WeatherData['condition'] => {
   return 'Clear';
 }
 
+const isAbortError = (error: unknown): boolean => (
+  error instanceof DOMException && error.name === 'AbortError'
+) || (
+  error instanceof Error && error.name === 'AbortError'
+);
+
 const fetchOpenMeteo = async (lat: number, lon: number, signal?: AbortSignal): Promise<WeatherData | null> => {
   try {
     const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,relative_humidity_2m&hourly=precipitation_probability&daily=weather_code,temperature_2m_max,temperature_2m_min,uv_index_max&timezone=auto&forecast_days=14`;
@@ -81,7 +87,9 @@ const fetchOpenMeteo = async (lat: number, lon: number, signal?: AbortSignal): P
       timezone: data.timezone,
     };
   } catch (e) {
-    console.error('Open-Meteo failed', e);
+    if (!isAbortError(e)) {
+      console.error('Open-Meteo failed', e);
+    }
     return null;
   }
 };
