@@ -43,6 +43,9 @@ const evictCache = <T>(cache: Map<string, { data: T; timestamp: number }>) => {
 };
 
 /** Shared helper: fetch weather + vibe for a location, with caching & abort. */
+const activeRequests = new Map<string, Promise<WeatherData | null>>();
+const activeVibeRequests = new Map<string, Promise<VibeRecommendation | null>>();
+
 const fetchWeatherAndVibe = async (
   location: GeoLocationResult,
   requestId: string,
@@ -59,9 +62,18 @@ const fetchWeatherAndVibe = async (
   if (cachedWeather && Date.now() - cachedWeather.timestamp < CACHE_TTL) {
     weather = cachedWeather.data;
     onProgress?.(`[CACHE] Retrieved atmospheric data for ${location.city}`);
+  } else if (activeRequests.has(cacheKey)) {
+    // Wait for in-flight request
+    weather = await activeRequests.get(cacheKey)!;
   } else {
-    weather = await getAggregatedWeather(location, onProgress, signal);
-    if (weather) weatherCache.set(cacheKey, { data: weather, timestamp: Date.now() });
+    const fetchPromise = getAggregatedWeather(location, onProgress, signal);
+    activeRequests.set(cacheKey, fetchPromise);
+    try {
+      weather = await fetchPromise;
+      if (weather) weatherCache.set(cacheKey, { data: weather, timestamp: Date.now() });
+    } finally {
+      activeRequests.delete(cacheKey);
+    }
   }
 
   if (lastRequestId !== requestId || signal.aborted) return;
@@ -80,9 +92,18 @@ const fetchWeatherAndVibe = async (
   let vibe: VibeRecommendation | null = null;
   if (cachedVibe && Date.now() - cachedVibe.timestamp < CACHE_TTL) {
     vibe = cachedVibe.data;
+  } else if (activeVibeRequests.has(vibeCacheKey)) {
+    // Wait for in-flight vibe request
+    vibe = await activeVibeRequests.get(vibeCacheKey)!;
   } else {
-    vibe = await generateVibe(weather.condition, signal);
-    if (vibe) vibeCache.set(vibeCacheKey, { data: vibe, timestamp: Date.now() });
+    const vibePromise = generateVibe(weather.condition, signal);
+    activeVibeRequests.set(vibeCacheKey, vibePromise);
+    try {
+      vibe = await vibePromise;
+      if (vibe) vibeCache.set(vibeCacheKey, { data: vibe, timestamp: Date.now() });
+    } finally {
+      activeVibeRequests.delete(vibeCacheKey);
+    }
   }
 
   if (lastRequestId !== requestId || signal.aborted) return;
