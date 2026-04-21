@@ -19,9 +19,6 @@ type ChiikawaMascotProps = {
 
 export const ChiikawaMascot = memo(({ variant = 'inline', className = '' }: ChiikawaMascotProps) => {
   const [randomDuration] = useState(() => 3 + Math.random());
-  const [pulseDuration] = useState(() => 4.5 + Math.random() * 2.5);
-  const [pulseScale] = useState(() => 1.08 + Math.random() * 0.08);
-  const [pulseOpacity] = useState(() => 0.82 + Math.random() * 0.1);
   const [imageIndex, setImageIndex] = useState(0);
   const shouldReduceMotion = useReducedMotion();
   const isDesktopDrift = variant === 'desktopDrift';
@@ -45,18 +42,13 @@ export const ChiikawaMascot = memo(({ variant = 'inline', className = '' }: Chii
           x: [0, 72, 148, 118, 36, 0],
           y: [0, -26, 14, 74, 56, 0],
           rotate: [-8, 5, 10, -3, -10, -8],
+          scale: [1, 1.04, 0.98, 1.05, 1, 1],
         }
       : {
           y: [0, -10, 0],
           rotate: [-5, 5, -5],
+          scale: [1, 1.05, 1],
         };
-
-  const pulseAnimate = shouldReduceMotion
-    ? {}
-    : {
-        scale: [1, pulseScale, 0.96, 1.04, 1],
-        opacity: [1, pulseOpacity, 1, 0.9, 1],
-      };
 
   return (
     <motion.button
@@ -75,32 +67,22 @@ export const ChiikawaMascot = memo(({ variant = 'inline', className = '' }: Chii
         className,
       ].filter(Boolean).join(' ')}
     >
-      <motion.span
-        animate={pulseAnimate}
-        transition={{
-          duration: pulseDuration,
-          repeat: Infinity,
-          ease: 'easeInOut',
-        }}
-        className="relative flex h-full w-full items-center justify-center"
-      >
-        {!isDesktopDrift && (
-          <img
-            aria-hidden="true"
-            src={currentImage.src}
-            alt=""
-            className="mobile-mascot-edge-blur"
-          />
-        )}
-        <img 
+      {!isDesktopDrift && (
+        <img
+          aria-hidden="true"
           src={currentImage.src}
-          alt={currentImage.alt}
-          className={[
-            'relative z-10 w-full h-full object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]',
-            !isDesktopDrift ? 'mobile-mascot-soft-edge' : '',
-          ].filter(Boolean).join(' ')}
+          alt=""
+          className="mobile-mascot-edge-blur"
         />
-      </motion.span>
+      )}
+      <img 
+        src={currentImage.src}
+        alt={currentImage.alt}
+        className={[
+          'relative z-10 w-full h-full object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]',
+          !isDesktopDrift ? 'mobile-mascot-soft-edge' : '',
+        ].filter(Boolean).join(' ')}
+      />
     </motion.button>
   );
 });
