@@ -323,25 +323,38 @@ export const getBestLocations = async (onProgress?: (msg: string) => void, signa
   };
 
   // Dedup logic: Group locations by same city name OR roughly same coordinates (dist < ~50km)
-  const deduped: GeoLocationResult[] = [];
+  const dedupedMap = new Map<string, GeoLocationResult>();
+
   for (const loc of locations) {
     const locCity = normalizeCityName(loc.city);
-    const isDuplicate = deduped.find(d => {
+    // Find if we already have a similar location in our map
+    let duplicateKey: string | null = null;
+
+    for (const [key, d] of dedupedMap.entries()) {
       // Coordinate proximity check
       const coordClose = Math.abs(d.lat - loc.lat) < 0.5 && Math.abs(d.lon - loc.lon) < 0.5;
       // City name match check
       const dCity = normalizeCityName(d.city);
       const cityMatch = locCity && dCity && locCity === dCity;
-      return coordClose || cityMatch;
-    });
-    if (!isDuplicate) {
-      deduped.push(loc);
+
+      if (coordClose || cityMatch) {
+        duplicateKey = key;
+        break;
+      }
+    }
+
+    if (!duplicateKey) {
+      // Not a duplicate, add to map using city or coords as key
+      const key = locCity || `${Math.round(loc.lat * 10)}_${Math.round(loc.lon * 10)}`;
+      dedupedMap.set(key, { ...loc });
     } else {
       // Merge: keep the higher-confidence coordinates
       // Domestic sources with mapped city coords are immune to VPN interference,
       // so prefer them even if confidence is equal
+      const isDuplicate = dedupedMap.get(duplicateKey)!;
       const preferLoc = loc.confidence > isDuplicate.confidence
         || (loc.confidence === isDuplicate.confidence && loc.source.includes('domestic'));
+
       if (preferLoc) {
         isDuplicate.lat = loc.lat;
         isDuplicate.lon = loc.lon;
@@ -351,7 +364,7 @@ export const getBestLocations = async (onProgress?: (msg: string) => void, signa
         }
       }
       isDuplicate.source = `${isDuplicate.source}+${loc.source}`;
-      
+
       const appendUnique = (arr: string[] | undefined, newItems: string[] | undefined) => {
         if (!newItems) return arr;
         const current = new Set(arr || []);
@@ -366,5 +379,6 @@ export const getBestLocations = async (onProgress?: (msg: string) => void, signa
     }
   }
 
+  const deduped = Array.from(dedupedMap.values());
   return deduped.sort((a, b) => b.confidence - a.confidence);
 };
