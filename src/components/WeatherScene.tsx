@@ -47,7 +47,7 @@ const Stars = memo(() => {
   return (
     <points>
       <bufferGeometry>
-        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+        <bufferAttribute attach="attributes-position" count={1200} array={positions} itemSize={3} />
       </bufferGeometry>
       <pointsMaterial color="#ffffff" size={0.7} sizeAttenuation transparent opacity={0.85} />
     </points>
@@ -106,8 +106,8 @@ const Rain = () => {
   return (
     <points>
       <bufferGeometry>
-        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
-        <bufferAttribute attach="attributes-velocity" args={[velocities, 1]} />
+        <bufferAttribute attach="attributes-position" count={rainCount} array={positions} itemSize={3} />
+        <bufferAttribute attach="attributes-velocity" count={rainCount} array={velocities} itemSize={1} />
       </bufferGeometry>
       <shaderMaterial
         ref={matRef}
@@ -162,9 +162,9 @@ const SnowEffect = () => {
   return (
     <points>
       <bufferGeometry>
-        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
-        <bufferAttribute attach="attributes-speed" args={[speeds, 1]} />
-        <bufferAttribute attach="attributes-phase" args={[phases, 1]} />
+        <bufferAttribute attach="attributes-position" count={snowCount} array={positions} itemSize={3} />
+        <bufferAttribute attach="attributes-speed" count={snowCount} array={speeds} itemSize={1} />
+        <bufferAttribute attach="attributes-phase" count={snowCount} array={phases} itemSize={1} />
       </bufferGeometry>
       <shaderMaterial
         ref={matRef}
