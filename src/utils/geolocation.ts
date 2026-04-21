@@ -267,25 +267,20 @@ export const getBestLocations = async (onProgress?: (msg: string) => void, signa
   const locations: GeoLocationResult[] = [];
   if (onProgress) onProgress("Initializing multi-layer geographic probes...");
 
-  // Parallelize fetch where possible without hanging indefinitely
-  const [gps, ip, webrtc, homeIp] = await Promise.all([
-    getGPSLocation(signal).then(res => {
-      if (res && onProgress) onProgress(`[GPS] Satellite lock: ${res.city || 'Coordinates acquired'}`);
-      return res;
-    }),
-    getIPLocation(undefined, 'ip', signal).then(res => {
-      if (res && onProgress) onProgress(`[IP-WAN] Proxy node traced: ${res.city || 'Unknown'}`);
-      return res;
-    }),
-    getWebRTCLocation(signal).then(res => {
-      if (res && onProgress) onProgress(`[STUN] WebRTC proxy bypassed: ${res.city || 'Unknown'}`);
-      return res;
-    }),
-    getDomesticIPLocation(signal).then(res => {
-      if (res && onProgress) onProgress(`[IP-LAN] Domestic direct route: ${res.city || 'Unknown'}`);
-      return res;
-    }),
+  // Parallelize fetch where possible without hanging indefinitely, handling individual failures
+  const results = await Promise.allSettled([
+    getGPSLocation(signal),
+    getIPLocation(undefined, 'ip', signal),
+    getWebRTCLocation(signal),
+    getDomesticIPLocation(signal),
   ]);
+
+  const [gps, ip, webrtc, homeIp] = results.map(r => r.status === 'fulfilled' ? r.value : null);
+
+  if (gps && onProgress) onProgress(`[GPS] Satellite lock: ${gps.city || 'Coordinates acquired'}`);
+  if (ip && onProgress) onProgress(`[IP-WAN] Proxy node traced: ${ip.city || 'Unknown'}`);
+  if (webrtc && onProgress) onProgress(`[STUN] WebRTC proxy bypassed: ${webrtc.city || 'Unknown'}`);
+  if (homeIp && onProgress) onProgress(`[IP-LAN] Domestic direct route: ${homeIp.city || 'Unknown'}`);
 
   if (gps) locations.push(gps);
   if (ip) locations.push(ip);
