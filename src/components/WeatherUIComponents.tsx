@@ -10,11 +10,13 @@ export const MetricCard = memo(({ label, value, unit }: { label: string; value: 
 const dateFormatter = new Intl.DateTimeFormat('en-US', { weekday: 'short', day: 'numeric' });
 
 const formatDate = (dateStr: string) => {
+  if (!dateStr) return 'Unknown';
   const [year, month, day] = dateStr.split('-').map(Number);
   if (year && month && day) {
     return dateFormatter.format(new Date(year, month - 1, day));
   }
-  return dateFormatter.format(new Date(dateStr));
+  const fallbackDate = new Date(dateStr);
+  return isNaN(fallbackDate.getTime()) ? 'Unknown' : dateFormatter.format(fallbackDate);
 };
 
 export const ForecastCard = memo(({ 

@@ -107,7 +107,7 @@ export const VibeWidget = memo(({ vibeData, loading }: VibeWidgetProps) => {
               {/* Cover Art */}
               <div className="shrink-0 w-24 h-24 rounded-xl overflow-hidden shadow-xl bg-black relative">
                 {currentItem.coverUrl ? (
-                  <ShimmerImage src={currentItem.coverUrl} alt={currentItem.title} />
+                  <ShimmerImage src={currentItem.coverUrl} alt={currentItem.title || 'Vibe cover image'} />
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center bg-white/5 border border-white/10 text-white/50 text-[10px] uppercase font-bold tracking-widest text-center shadow-inner gap-2 pt-2">
                     <div className="animate-bounce">

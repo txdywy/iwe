@@ -245,10 +245,10 @@ export const WeatherScene = memo(({ condition, timezone }: WeatherSceneProps) =>
 
   // Derive day/night from timezone + condition. Refreshes every 10 min.
   const [nightTick, setNightTick] = useState(0);
-  const isNight = (() => {
+  const isNight = useMemo(() => {
     void nightTick; // depend on tick to force recompute
     return computeIsNight(timezone);
-  })();
+  }, [nightTick, timezone]);
 
   useEffect(() => {
     const interval = setInterval(() => setNightTick(t => t + 1), 10 * 60 * 1000);

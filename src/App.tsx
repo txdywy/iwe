@@ -60,7 +60,7 @@ function App() {
     <main className="relative min-h-screen w-full font-sans">
       {/* Weather Scene Fixed Background */}
       <div className="fixed inset-0 -z-10 pointer-events-none" style={{ contain: 'strict' }}>
-        <Suspense fallback={<div className="absolute inset-0 bg-gray-900" />}>
+        <Suspense fallback={<div className="absolute inset-0 bg-transparent transition-colors duration-1000" />}>
           <WeatherScene condition={condition} timezone={weatherData?.timezone} />
         </Suspense>
       </div>
