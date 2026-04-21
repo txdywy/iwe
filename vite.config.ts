@@ -14,7 +14,7 @@ export default defineConfig({
           if (id.includes('@react-three/fiber')) {
             return 'react-three-fiber';
           }
-          if (id.includes('/three/') || id.includes('\\three\\')) {
+          if (id.includes('/three/') || id.includes('node_modules/three/')) {
             return 'three';
           }
           if (id.includes('framer-motion')) {

@@ -13,9 +13,9 @@ const ShimmerImage = ({ src, alt }: { src: string; alt: string }) => {
   if (hasError) {
     return (
       <div className="w-full h-full flex flex-col items-center justify-center bg-white/5 border border-white/10 text-white/50 text-[10px] uppercase font-bold tracking-widest text-center shadow-inner gap-2 pt-2">
-        <motion.div animate={{ rotate: [0, 10, -10, 0] }} transition={{ repeat: Infinity, duration: 1.5, ease: 'easeInOut' }}>
+        <div className="animate-bounce">
           🐇
-        </motion.div>
+        </div>
         Oops
       </div>
     );
@@ -32,16 +32,16 @@ const ShimmerImage = ({ src, alt }: { src: string; alt: string }) => {
         />
       )}
       {src && (
-        <img 
-          src={src} 
-          alt={alt} 
+        <img
+          src={src}
+          alt={alt}
           onLoad={handleLoad}
           onError={handleError}
-          className={`w-full h-full object-cover transition-opacity duration-700 ${loaded ? 'opacity-100' : 'opacity-0'}`} 
+          className={`w-full h-full object-cover transition-opacity duration-700 ${loaded ? 'opacity-100' : 'opacity-0'}`}
         />
       )}
       {!src && !loaded && (
-        <motion.div animate={{ opacity: [0.3, 0.6, 0.3] }} transition={{ repeat: Infinity, duration: 2 }} className="w-6 h-6 border-[2px] border-white/20 border-t-white/60 rounded-full animate-spin" />
+        <div className="w-6 h-6 border-[2px] border-white/20 border-t-white/60 rounded-full animate-spin" />
       )}
     </div>
   );
@@ -64,7 +64,7 @@ export const VibeWidget = memo(({ vibeData, loading }: VibeWidgetProps) => {
   if (loading) {
     return (
       <div className="w-full max-w-sm md:max-w-none rounded-[24px] border border-white/10 bg-black/40 backdrop-blur-xl p-4 md:rounded-[32px] md:border-white/20 md:bg-black/30 md:backdrop-blur-2xl md:p-5 md:shadow-2xl flex items-center justify-center min-h-[150px]">
-        <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} className="w-6 h-6 border-2 border-white/50 border-t-white rounded-full" />
+        <div className="w-6 h-6 border-2 border-white/50 border-t-white rounded-full animate-spin" />
         <span className="ml-3 text-white/50 text-xs font-bold tracking-widest uppercase">Fetching Vibe...</span>
       </div>
     );
@@ -110,9 +110,9 @@ export const VibeWidget = memo(({ vibeData, loading }: VibeWidgetProps) => {
                   <ShimmerImage src={currentItem.coverUrl} alt={currentItem.title} />
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center bg-white/5 border border-white/10 text-white/50 text-[10px] uppercase font-bold tracking-widest text-center shadow-inner gap-2 pt-2">
-                    <motion.div animate={{ rotate: [0, 10, -10, 0] }} transition={{ repeat: Infinity, duration: 1.5, ease: 'easeInOut' }}>
+                    <div className="animate-bounce">
                       🐇
-                    </motion.div>
+                    </div>
                     Oops
                   </div>
                 )}
@@ -139,13 +139,13 @@ export const VibeWidget = memo(({ vibeData, loading }: VibeWidgetProps) => {
             </motion.div>
           ) : (
             <motion.div key="empty" className="absolute inset-0 flex flex-col items-center justify-center text-white/40 text-[10px] uppercase font-bold tracking-widest gap-2">
-               <motion.div animate={{ rotate: [0, -10, 10, 0] }} transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }} className="text-xl">
+               <div className="text-xl animate-pulse">
                  📡
-               </motion.div>
-               <motion.span animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 1.5, repeat: Infinity }}>
+               </div>
+               <span className="animate-pulse">
                  Scanning database...
-               </motion.span>
-               <button 
+               </span>
+               <button
                 onClick={handleRetry}
                 className="mt-1 text-[8px] bg-white/10 hover:bg-white/20 px-2 py-1 rounded-full transition-colors border border-white/5"
                >

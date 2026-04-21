@@ -1,7 +1,7 @@
-import { useRef, memo, useState, useEffect, Component } from 'react';
+import { useRef, memo, useState, useEffect, Component, useMemo } from 'react';
 import type { ReactNode, ErrorInfo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { PointLight, MathUtils, ShaderMaterial } from 'three';
+import { PointLight, MathUtils, ShaderMaterial, SphereGeometry, MeshStandardMaterial } from 'three';
 import type { WeatherCondition } from '../types/weather';
 
 // ── Error Boundary for WebGL crashes ──
@@ -47,7 +47,7 @@ const Stars = memo(() => {
   return (
     <points>
       <bufferGeometry>
-        <bufferAttribute attach="attributes-position" count={1200} array={positions} itemSize={3} />
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
       </bufferGeometry>
       <pointsMaterial color="#ffffff" size={0.7} sizeAttenuation transparent opacity={0.85} />
     </points>
@@ -64,22 +64,24 @@ const CloudCluster = memo(({
   scale?: number;
   color: string;
   opacity: number;
-}) => (
-  <group position={position} scale={scale}>
-    {[
-      [-3, 0, 0, 2.6],
-      [0, 0.4, 0, 3.2],
-      [3, -0.1, 0, 2.4],
-      [-0.8, 1.6, -0.2, 2.5],
-      [1.8, 1.2, 0.2, 2.1],
-    ].map(([x, y, z, radius], index) => (
-      <mesh key={index} position={[x, y, z]}>
-        <sphereGeometry args={[radius, 18, 12]} />
-        <meshStandardMaterial color={color} transparent opacity={opacity} depthWrite={false} />
-      </mesh>
-    ))}
-  </group>
-));
+}) => {
+  const geom = useMemo(() => new SphereGeometry(1, 18, 12), []);
+  const mat = useMemo(() => new MeshStandardMaterial({ color, transparent: true, opacity, depthWrite: false }), [color, opacity]);
+
+  return (
+    <group position={position} scale={scale}>
+      {[
+        [-3, 0, 0, 2.6],
+        [0, 0.4, 0, 3.2],
+        [3, -0.1, 0, 2.4],
+        [-0.8, 1.6, -0.2, 2.5],
+        [1.8, 1.2, 0.2, 2.1],
+      ].map(([x, y, z, radius], index) => (
+        <mesh key={index} position={[x, y, z]} scale={radius} geometry={geom} material={mat} />
+      ))}
+    </group>
+  );
+});
 
 const Rain = () => {
   const rainCount = 5000;
@@ -106,8 +108,8 @@ const Rain = () => {
   return (
     <points>
       <bufferGeometry>
-        <bufferAttribute attach="attributes-position" count={rainCount} array={positions} itemSize={3} />
-        <bufferAttribute attach="attributes-velocity" count={rainCount} array={velocities} itemSize={1} />
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+        <bufferAttribute attach="attributes-velocity" args={[velocities, 1]} />
       </bufferGeometry>
       <shaderMaterial
         ref={matRef}
@@ -162,9 +164,9 @@ const SnowEffect = () => {
   return (
     <points>
       <bufferGeometry>
-        <bufferAttribute attach="attributes-position" count={snowCount} array={positions} itemSize={3} />
-        <bufferAttribute attach="attributes-speed" count={snowCount} array={speeds} itemSize={1} />
-        <bufferAttribute attach="attributes-phase" count={snowCount} array={phases} itemSize={1} />
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+        <bufferAttribute attach="attributes-speed" args={[speeds, 1]} />
+        <bufferAttribute attach="attributes-phase" args={[phases, 1]} />
       </bufferGeometry>
       <shaderMaterial
         ref={matRef}

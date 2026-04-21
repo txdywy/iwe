@@ -48,16 +48,18 @@ export const LocationButton = memo(({
   city,
   source,
   isActive,
+  index,
   onClick
 }: {
   city: string;
   source: string;
   isActive: boolean;
-  onClick: () => void;
+  index: number;
+  onClick: (index: number) => void;
 }) => {
   return (
     <button
-      onClick={onClick}
+      onClick={() => onClick(index)}
       className={`flex shrink-0 transition-all active:scale-95 duration-300
         ${/* Mobile styles (default) */ ""}
         flex-col items-start gap-1 px-4 py-3 rounded-[20px] border

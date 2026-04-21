@@ -79,7 +79,8 @@ function App() {
                       city={loc.city || '...'}
                       source={loc.source}
                       isActive={idx === activeLocationIndex}
-                      onClick={() => setActiveLocation(idx)}
+                      index={idx}
+                      onClick={setActiveLocation}
                     />
                   ))}
                </div>
@@ -158,7 +159,8 @@ function App() {
                     city={loc.city || 'Resolving...'}
                     source={loc.source}
                     isActive={idx === activeLocationIndex}
-                    onClick={() => setActiveLocation(idx)}
+                    index={idx}
+                    onClick={setActiveLocation}
                   />
                 ))}
               </div>
