@@ -1,10 +1,9 @@
 import { memo } from 'react';
 import { useStore } from '../store/useStore';
-import { useShallow } from 'zustand/shallow';
 
 export const IPDataWidget = memo(() => {
-  const { locations } = useStore(useShallow(s => ({ locations: s.locations })));
-  
+  const locations = useStore(s => s.locations);
+
   const ipLocations = locations.filter(loc => loc.ip);
 
   if (ipLocations.length === 0) return null;

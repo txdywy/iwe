@@ -68,6 +68,10 @@ const CloudCluster = memo(({
   const geom = useMemo(() => new SphereGeometry(1, 18, 12), []);
   const mat = useMemo(() => new MeshStandardMaterial({ color, transparent: true, opacity, depthWrite: false }), [color, opacity]);
 
+  // Free GPU resources on unmount and when the material is recreated (color/opacity change).
+  useEffect(() => () => geom.dispose(), [geom]);
+  useEffect(() => () => mat.dispose(), [mat]);
+
   return (
     <group position={position} scale={scale}>
       {[
@@ -261,6 +265,9 @@ export const WeatherScene = memo(({ condition, timezone }: WeatherSceneProps) =>
         <Canvas
           camera={{ position: [0, 0, 100], fov: 60 }}
           dpr={[1, 1]}
+          // Only run the render loop continuously for animated conditions.
+          // Clear/Clouds are static, so render on demand to save CPU/GPU/battery.
+          frameloop={isRain || isSnow ? 'always' : 'demand'}
           fallback={<div className="absolute inset-0" style={{ background: bgColor }} />}
         >
           <fog attach="fog" args={[bgColor, 50, condition === 'Snow' ? 150 : 300]} />
